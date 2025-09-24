@@ -18,45 +18,22 @@ import {
     deleteStudent,
     addEntry,
     updateEntry,
-    importData,
-    undo,
-    redo,
-    loadSampleData,
-    clearAllData,
-    getStudents
+    _importDataInternal, // Renamed to avoid confusion with App.jsx specific import handler
+    saveStateForUndo, // Now imported for history management
+    undo,             // Now imported for history management
+    redo,             // Now imported for history management
+    loadSampleData,   // Now imported to manage sample data loading logic
+    clearAllData,     // Now imported to manage clear all data logic
+    getStudents,
+    saveSettings as saveSettingsToDB,     // Import DB-specific save for settings
+    saveMasterData as saveMasterDataToDB  // Import DB-specific save for master data
 } from './database.js';
-
-// =======================
-// Farb-Hilfsfunktionen
-// =======================
-const lightenColor = (color, percent) => {
-    const num = parseInt(color.replace('#', ''), 16);
-    const amt = Math.round(2.55 * percent);
-    const R = (num >> 16) + amt;
-    const G = ((num >> 8) & 0x00FF) + amt;
-    const B = (num & 0x0000FF) + amt;
-    return '#' + (
-        0x1000000 +
-        (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
-        (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 +
-        (B < 255 ? (B < 1 ? 0 : B) : 255)
-    ).toString(16).slice(1);
-};
-
-const darkenColor = (color, percent) => {
-    const num = parseInt(color.replace('#', ''), 16);
-    const amt = Math.round(2.55 * percent);
-    const R = (num >> 16) - amt;
-    const G = ((num >> 8) & 0x00FF) - amt;
-    const B = (num & 0x0000FF) - amt;
-    return '#' + (
-        0x1000000 +
-        (R > 0 ? R : 0) * 0x10000 +
-        (G > 0 ? G : 0) * 0x100 +
-        (B > 0 ? B : 0)
-    ).toString(16).slice(1);
-};
-
+ 
+import {
+    applyCustomColors,
+    resetCustomColors
+} from './utils/colors.js'; // Import from new colors utility
+ 
 // =======================
 // Hauptkomponente App
 // =======================
@@ -66,54 +43,52 @@ const App = () => {
     const [entries, setEntries] = useState([]);
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-    const [viewMode, setViewMode] = useState('student');
+    const [viewMode, setViewMode] = useState('student'); // 'student', 'day', 'search'
     const [settings, setSettings] = useState({ theme: 'hell', fontSize: 16, inputFontSize: 16, customColors: {} });
     const [masterData, setMasterData] = useState({ schoolYears: [], schools: {}, subjects: [], activities: [], notesTemplates: [] });
     const [modal, setModal] = useState(null);
-    const [navOpen, setNavOpen] = useState(false);
+    const [navOpen, setNavOpen] = useState(false); // State for navigation drawer
     const [editingEntry, setEditingEntry] = useState(null);
     const [searchModalOpen, setSearchModalOpen] = useState(false);
     const [searchResults, setSearchResults] = useState([]);
-    const [studentFilterTerm, setStudentFilterTerm] = useState('');
-
-    const [, forceUpdate] = useState(0);
-    const triggerRender = () => forceUpdate(prev => prev + 1);
-
+ 
+    // Filters for student list in Navigation, managed by Navigation component
+    const [studentFilters, setStudentFilters] = useState({
+        search: '',
+        schoolYear: '',
+        school: '',
+        className: ''
+    });
+ 
+    // Undo/Redo History
+    const [history, setHistory] = useState([]);
+    const [historyIndex, setHistoryIndex] = useState(-1);
+ 
     // =======================
     // Farb- und Theme-Einstellungen
     // =======================
-    const applyCustomColors = useCallback((colors) => {
-        const root = document.documentElement;
-        root.style.setProperty('--sidebar-bg', colors.navigation || '#fed7aa');
-        root.style.setProperty('--primary-color', colors.header || '#dc2626');
-        root.style.setProperty('--secondary-color', colors.header ? darkenColor(colors.header, 20) : '#b91c1c');
-        root.style.setProperty('--toolbar-bg-custom', colors.toolbar || '#f8fafc');
-        root.style.setProperty('--background-color', colors.windowBackground || '#fef7ed');
-        root.style.setProperty('--card-bg', colors.windowBackground ? lightenColor(colors.windowBackground, 10) : '#ffffff');
-        root.style.setProperty('--modal-bg-custom', colors.windowBackground || '#ffffff');
-        document.documentElement.classList.add('custom-colors-applied');
-    }, []);
-
-    const resetCustomColors = useCallback(() => {
-        const root = document.documentElement;
-        root.style.removeProperty('--sidebar-bg');
-        root.style.removeProperty('--primary-color');
-        root.style.removeProperty('--secondary-color');
-        root.style.removeProperty('--toolbar-bg-custom');
-        root.style.removeProperty('--background-color');
-        root.style.removeProperty('--card-bg');
-        root.style.removeProperty('--modal-bg-custom');
-        document.documentElement.classList.remove('custom-colors-applied');
-    }, []);
-
-    const applySettings = useCallback((settings) => {
-        document.documentElement.setAttribute('data-theme', settings.theme);
-        document.documentElement.style.setProperty('--font-size', `${settings.fontSize}px`);
-        document.documentElement.style.setProperty('--input-font-size', `${settings.inputFontSize}px`);
-        if (settings.theme === 'farbig' && settings.customColors) applyCustomColors(settings.customColors);
-        else resetCustomColors();
-    }, [applyCustomColors, resetCustomColors]);
-
+    // Centralized apply settings, using imported color functions
+    const applySettings = useCallback((currentSettings) => {
+        document.documentElement.setAttribute('data-theme', currentSettings.theme);
+        document.documentElement.style.setProperty('--font-size', `${currentSettings.fontSize}px`);
+        document.documentElement.style.setProperty('--input-font-size', `${currentSettings.inputFontSize}px`);
+        if (currentSettings.theme === 'farbig' && currentSettings.customColors) {
+            applyCustomColors(currentSettings.customColors);
+        } else {
+            resetCustomColors();
+        }
+    }, []); // Dependencies removed as color functions are now imported
+ 
+    // =======================
+    // History Management
+    // =======================
+    // Captures the current application state for undo/redo
+    const captureAppState = useCallback(async () => {
+        if (!db) return;
+        await saveStateForUndo(db, setHistory, setHistoryIndex, history, historyIndex);
+    }, [db, history, historyIndex]);
+ 
+ 
     // =======================
     // DB Initialisierung
     // =======================
@@ -122,7 +97,8 @@ const App = () => {
             try {
                 const database = await setupDB();
                 setDb(database);
-
+ 
+                // Load Settings
                 const settingsData = await database.get('settings', 1);
                 if (settingsData) {
                     const themeMapping = { light: 'hell', dark: 'dunkel', colored: 'farbig' };
@@ -130,13 +106,16 @@ const App = () => {
                     setSettings(convertedSettings);
                     applySettings(convertedSettings);
                 }
-
+ 
+                // Load Master Data
                 const masterDataLoaded = await database.get('masterData', 1);
                 if (masterDataLoaded) setMasterData(masterDataLoaded);
-
+ 
+                // Load Students
                 const allStudents = await getStudents(database);
                 setStudents(allStudents || []);
-
+ 
+                // Set initial selected student and entries
                 if (allStudents && allStudents.length > 0) {
                     const firstStudent = allStudents[0];
                     setSelectedStudent(firstStudent);
@@ -147,18 +126,27 @@ const App = () => {
                     }));
                     setEntries(entriesWithNames || []);
                 }
+ 
+                // Capture initial state for undo/redo (empty initial history)
+                // This must be done after initial state is fully loaded to be useful
+                await saveStateForUndo(database, setHistory, setHistoryIndex, [], -1);
+ 
             } catch (error) {
                 console.error('DB-Initialisierung fehlgeschlagen:', error);
             }
         };
         initDB();
-    }, [applySettings]);
-
+    }, [applySettings]); // `applySettings` is a useCallback, so it's stable
+ 
+ 
     // =======================
-    // Einträge laden
+    // Einträge laden für ausgewählten Schüler
     // =======================
-    const loadEntries = useCallback(async () => {
-        if (!db || !selectedStudent) return;
+    const loadEntriesForSelectedStudent = useCallback(async () => {
+        if (!db || !selectedStudent) {
+             setEntries([]); // Clear entries if no student selected
+             return;
+        }
         try {
             const entriesData = await getEntriesByStudentId(db, selectedStudent.id);
             const entriesWithNames = entriesData.map(e => ({
@@ -170,24 +158,29 @@ const App = () => {
             console.error('Fehler beim Laden der Einträge:', error);
         }
     }, [db, selectedStudent, students]);
-
-    useEffect(() => { loadEntries(); }, [loadEntries]);
-
+ 
+    // Effect to reload entries when selectedStudent or students list changes
+    useEffect(() => {
+        loadEntriesForSelectedStudent();
+    }, [loadEntriesForSelectedStudent]);
+ 
+ 
     // =======================
     // Studenten-Funktionen
     // =======================
     const handleAddStudent = async (student) => {
         if (!db) return;
         try {
-            const id = await addStudent(db, student);
+            const newId = await addStudent(db, student);
             const updatedStudents = await getStudents(db);
             setStudents(updatedStudents);
-            const newStudent = updatedStudents.find(s => s.id === id);
+            const newStudent = updatedStudents.find(s => s.id === newId);
             setSelectedStudent(newStudent);
             setModal(null);
+            await captureAppState(); // Capture state after modification
         } catch (err) { console.error(err); }
     };
-
+ 
     const handleUpdateStudent = async (student) => {
         if (!db) return;
         try {
@@ -197,9 +190,10 @@ const App = () => {
             const updatedStudent = updatedStudents.find(s => s.id === student.id);
             setSelectedStudent(updatedStudent);
             setModal(null);
+            await captureAppState(); // Capture state after modification
         } catch (err) { console.error(err); }
     };
-
+ 
     const handleDeleteStudent = async (id) => {
         if (!db) return;
         try {
@@ -209,9 +203,10 @@ const App = () => {
             setSelectedStudent(updatedStudents.length > 0 ? updatedStudents[0] : null);
             if (updatedStudents.length === 0) setEntries([]);
             setModal(null);
+            await captureAppState(); // Capture state after modification
         } catch (err) { console.error(err); }
     };
-
+ 
     // =======================
     // Eintrags-Funktionen
     // =======================
@@ -219,20 +214,22 @@ const App = () => {
         if (!db || !selectedStudent) return;
         try {
             await addEntry(db, { ...entry, studentId: selectedStudent.id, date: selectedDate });
-            await loadEntries();
+            await loadEntriesForSelectedStudent();
             setModal(null);
+            await captureAppState(); // Capture state after modification
         } catch (err) { console.error(err); }
     };
-
+ 
     const handleUpdateEntry = async (entry) => {
         if (!db) return;
         try {
             await updateEntry(db, entry);
-            await loadEntries();
+            await loadEntriesForSelectedStudent();
             setModal(null);
+            await captureAppState(); // Capture state after modification
         } catch (err) { console.error(err); }
     };
-
+ 
     // =======================
     // Toolbar Aktionen
     // =======================
@@ -241,27 +238,32 @@ const App = () => {
         try {
             const allStudents = await db.getAll('students');
             const allEntries = await db.getAll('entries');
-            const masterDataData = await db.getAll('masterData');
-            const settingsData = await db.getAll('settings');
-
+            const masterDataData = await db.get('masterData', 1);
+            const settingsData = await db.get('settings', 1);
+ 
             const exportObject = {
                 students: allStudents,
                 entries: allEntries,
-                masterData: masterDataData[0] || {},
-                settings: settingsData[0] || {}
+                masterData: masterDataData || {},
+                settings: settingsData || {}
             };
-
+ 
             const jsonStr = JSON.stringify(exportObject, null, 2);
             const blob = new Blob([jsonStr], { type: 'application/json' });
             const now = new Date();
-            const dateStr = now.toISOString().replace(/[:]/g, '-').split('.')[0];
+            const dateStr = now.toISOString().replace(/[:.]/g, '-'); // Use /[:.]/g to replace both colon and dot
             const fileName = `paedagogische-dokumentation-${dateStr}.json`;
-
+ 
             if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], fileName, { type: 'application/json' })] })) {
                 const file = new File([blob], fileName, { type: 'application/json' });
-                try { await navigator.share({ files: [file], title: 'Export Daten', text: 'Export der pädagogischen Dokumentation' }); }
-                catch (err) { console.error('Export abgebrochen oder fehlgeschlagen:', err); }
+                try {
+                    await navigator.share({ files: [file], title: 'Export Daten', text: 'Export der pädagogischen Dokumentation' });
+                } catch (err) {
+                    // User dismissed share dialog or it failed
+                    console.error('Export abgebrochen oder fehlgeschlagen:', err);
+                }
             } else {
+                // Fallback for browsers without Web Share API or if it fails
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
                 link.download = fileName;
@@ -271,7 +273,7 @@ const App = () => {
             }
         } catch (err) { console.error('Fehler beim Exportieren:', err); }
     };
-
+ 
     const handleImport = async () => {
         if (!db) return;
         try {
@@ -280,98 +282,181 @@ const App = () => {
             fileInput.accept = '.json';
             fileInput.onchange = async (event) => {
                 try {
-                    await importData(db, event, setSettings, setMasterData, setStudents, setModal);
-                    const updatedStudents = await getStudents(db);
-                    setStudents(updatedStudents);
-                    setSelectedStudent(updatedStudents.length > 0 ? updatedStudents[0] : null);
-                    await loadEntries();
+                    const importedData = await _importDataInternal(db, event.target.files[0]);
+ 
+                    // Update local React states from imported data
+                    if (importedData.settings) {
+                        const themeMapping = { light: 'hell', dark: 'dunkel', colored: 'farbig' };
+                        const convertedSettings = { ...importedData.settings, theme: themeMapping[importedData.settings.theme] || 'hell' };
+                        setSettings(convertedSettings);
+                        applySettings(convertedSettings); // Re-apply theme
+                    }
+                    if (importedData.masterData) setMasterData(importedData.masterData);
+                    setStudents(importedData.students || []);
+ 
+                    // Select the first student if available, or null
+                    const newSelectedStudent = importedData.students.length > 0 ? importedData.students[0] : null;
+                    setSelectedStudent(newSelectedStudent);
+ 
+                    // Load entries for the newly selected student (or clear if none)
+                    if (newSelectedStudent) {
+                        const entriesData = await getEntriesByStudentId(db, newSelectedStudent.id);
+                        setEntries(entriesData.map(e => ({ ...e, studentName: newSelectedStudent.name })));
+                    } else {
+                        setEntries([]);
+                    }
+ 
+                    setModal(null);
+                    alert('Daten erfolgreich importiert!');
+                    await captureAppState(); // Capture state after import
                 } catch (err) {
                     console.error('Import fehlgeschlagen:', err);
+                    alert('Import fehlgeschlagen: ' + (err.message || err));
                 }
             };
             fileInput.click();
         } catch (err) { console.error('Fehler beim Importieren:', err); }
     };
-
-    const handleUndo = async () => { if (db) await undo(db); };
-    const handleRedo = async () => { if (db) await redo(db); };
-
-    const handleLoadSampleData = async () => { if (db) await loadSampleData(db, setMasterData, setStudents, setEntries); };
-    const handleClearAllData = async () => { if (db) await clearAllData(db, setStudents, setEntries, setSettings, setMasterData); setSelectedStudent(null); setSelectedDate(new Date().toISOString().split('T')[0]); };
+ 
+    const handleUndo = async () => {
+        if (db) await undo(db, history, historyIndex, setHistoryIndex, setStudents, setEntries, setSettings, setMasterData);
+    };
+    const handleRedo = async () => {
+        if (db) await redo(db, history, historyIndex, setHistoryIndex, setStudents, setEntries, setSettings, setMasterData);
+    };
+ 
+    const handleLoadSampleData = async () => {
+        if (!db) return;
+        if (!window.confirm('Möchten Sie Beispieldaten laden? Alle aktuellen Daten werden dabei überschrieben!')) return;
+        try {
+            const loadedData = await loadSampleData(db); // Call DB function to load data
+           
+            // Update App.jsx states with loaded data
+            setStudents(loadedData.students);
+            setEntries(loadedData.entries);
+            setMasterData(loadedData.masterData);
+           
+            // Reset settings to default for sample data or specific sample settings
+            const defaultSettings = { theme: 'hell', fontSize: 16, inputFontSize: 16, customColors: {} };
+            setSettings(defaultSettings);
+            applySettings(defaultSettings);
+ 
+            const firstStudent = loadedData.students.length > 0 ? loadedData.students[0] : null;
+            setSelectedStudent(firstStudent);
+           
+            setSelectedDate(new Date().toISOString().split('T')[0]); // Reset date to today
+            setStudentFilters({ search: '', schoolYear: '', school: '', className: '' }); // Reset student filters
+           
+            alert('Beispieldaten erfolgreich geladen!');
+            setModal(null); // Close any open modal
+            await captureAppState(); // Capture state after loading sample data
+        } catch (err) {
+            console.error('Fehler beim Laden der Beispieldaten:', err);
+            alert('Fehler beim Laden der Beispieldaten: ' + (err.message || err));
+        }
+    };
+ 
+    const handleClearAllData = async () => {
+        if (!db) return;
+        if (!window.confirm('Sind Sie SICHER, dass Sie ALLE Daten löschen möchten? Diese Aktion kann NICHT rückgängig gemacht werden!')) return;
+        try {
+            const clearedData = await clearAllData(db); // Call DB function to clear data
+ 
+            // Update App.jsx states
+            setStudents(clearedData.students);
+            setEntries(clearedData.entries);
+            setSettings(clearedData.settings);
+            setMasterData(clearedData.masterData);
+ 
+            setSelectedStudent(null);
+            setSelectedDate(new Date().toISOString().split('T')[0]);
+            setStudentFilters({ search: '', schoolYear: '', school: '', className: '' }); // Reset student filters
+ 
+            alert('Alle Daten erfolgreich gelöscht!');
+            setModal(null); // Close any open modal
+            await captureAppState(); // Capture state after clearing all data
+        } catch (err) {
+            console.error('Fehler beim Löschen aller Daten:', err);
+            alert('Fehler beim Löschen aller Daten: ' + (err.message || err));
+        }
+    };
+ 
     const handlePrint = () => { window.print(); };
-
+ 
     const handleOpenSearch = () => { setSearchModalOpen(true); };
     const handleCloseSearch = () => { setSearchModalOpen(false); setSearchResults([]); };
-
+ 
     // =======================
     // Such-Handler
     // =======================
     const handleSearch = async (criteria) => {
         if (!db) return;
-
-        let searchTerm = '';
-        let searchType = 'all';
-        if (typeof criteria === 'string') searchTerm = criteria.trim();
-        else { searchTerm = (criteria.value ?? '').toString().trim(); searchType = (criteria.type ?? 'all').toLowerCase(); }
-
+ 
+        let searchTerm = criteria.value ? criteria.value.toString().trim() : '';
+        let searchType = (criteria.type ?? 'all').toLowerCase();
+ 
         const isExact = /^".*"$/.test(searchTerm);
         if (isExact) searchTerm = searchTerm.slice(1, -1).toLowerCase();
         else searchTerm = searchTerm.toLowerCase();
-
+ 
         try {
             const allEntries = await db.getAll('entries');
-            const allStudents = await getStudents(db); // Alle Schüler einmalig abrufen
-
+            const allStudents = await getStudents(db); // Fetch all students once
+ 
             let results = allEntries.filter(e => {
                 const studentObj = allStudents.find(s => s.id === e.studentId);
                 const studentNameLower = studentObj ? studentObj.name.toLowerCase() : '';
-
-                // Hilfsfunktion, um ein Feld (oder seine alten Entsprechungen) zu prüfen
+ 
+                // Helper function to check a field (or its old equivalents) for match
                 const checkField = (newField, oldField1, oldField2, value, exactMatch) => {
                     const fieldValue1 = (e[newField] || '').toString().toLowerCase();
                     const fieldValue2 = (e[oldField1] || '').toString().toLowerCase();
-                    const fieldValue3 = (e[oldField2] || '').toString().toLowerCase(); // Optional: Für activity/measures
-
+                    const fieldValue3 = (e[oldField2] || '').toString().toLowerCase(); // Optional: For activity/measures
+ 
                     const match1 = exactMatch ? fieldValue1 === value : fieldValue1.includes(value);
                     const match2 = exactMatch ? fieldValue2 === value : fieldValue2.includes(value);
                     const match3 = exactMatch ? fieldValue3 === value : fieldValue3.includes(value);
-
+ 
                     return match1 || match2 || match3;
                 };
-
+ 
                 switch (searchType) {
                     case 'topic':
-                    case 'thema': // 'thema' ist ein alter Alias, 'subject' ist neu, 'topic' ebenfalls alt, 'activity' kann auch Thema sein
+                    case 'thema':
                         return checkField('subject', 'topic', 'activity', searchTerm, isExact);
                     case 'rating':
                     case 'bewertung':
                         const ratingValue = (e.erfolgRating || e.bewertung || '').toString().toLowerCase().trim();
                         if (searchTerm === '' || searchTerm === 'leer') {
-                            return ratingValue === ''; // Suche nach leeren Bewertungen
+                            return ratingValue === ''; // Search for empty ratings
                         }
-                        return ratingValue === searchTerm; // Suche nach 'positiv' oder 'negativ'
+                        return ratingValue === searchTerm; // Search for 'positiv' or 'negativ'
                     case 'name':
                         return studentNameLower.includes(searchTerm);
                     case 'all':
                     default:
-                        // Durchsuche alle relevanten Felder (neu und alt)
+                        // Search all relevant fields (new and old)
                         const searchableFields = [
-                            e.subject, e.topic, e.activity, // Thema, alter Topic/Activity
-                            e.observations, e.notes,      // Beobachtungen, alte Notes
-                            e.measures,                   // Maßnahmen
-                            e.erfolg,                     // Erfolg (Text)
-                            e.erfolgRating, e.bewertung   // Erfolgsbewertung, alte Bewertung
+                            e.subject, e.topic, e.activity, // Subject, old Topic/Activity
+                            e.observations, e.notes,      // Observations, old Notes
+                            e.measures,                   // Measures
+                            e.erfolg,                     // Success (text)
+                            e.erfolgRating, e.bewertung   // Success Rating, old Rating
                         ].filter(f => f != null && f !== '').map(f => f.toString().toLowerCase());
-
-                        if (studentNameLower.includes(searchTerm)) return true; // Schülernamen immer prüfen
+ 
+                        if (studentNameLower.includes(searchTerm)) return true; // Always check student name
                         return searchableFields.some(f => isExact ? f === searchTerm : f.includes(searchTerm));
                 }
             });
-
-            results = results.map(e => ({ ...e, studentName: allStudents.find(s => s.id === e.studentId)?.name || `Schüler ${e.studentId}` }));
-            setSearchResults(results);
+ 
+            // Attach student names to results
+            const resultsWithNames = results.map(e => ({
+                ...e,
+                studentName: allStudents.find(s => s.id === e.studentId)?.name || `Schüler ${e.studentId}`
+            }));
+            setSearchResults(resultsWithNames);
             setViewMode('search');
-            setSearchModalOpen(false);
+            setSearchModalOpen(false); // Close search modal after search
         } catch (err) {
             console.error('Fehler bei Suche:', err);
             setSearchResults([]);
@@ -379,43 +464,71 @@ const App = () => {
             setSearchModalOpen(false);
         }
     };
-
-    const handleStudentClick = (student) => { setSelectedStudent(student); setViewMode('student'); setSearchResults([]); setSearchModalOpen(false); };
-    const filteredStudents = students.filter(s => s.name.toLowerCase().includes(studentFilterTerm.toLowerCase()));
-
+ 
+    const handleStudentClick = (student) => {
+        setSelectedStudent(student);
+        setViewMode('student');
+        setSearchResults([]); // Clear search results when selecting a student
+        setSearchModalOpen(false); // Ensure search modal is closed
+        setNavOpen(false); // Close navigation on student select
+    };
+ 
+    // Filter students based on navigation filters
+    const filteredStudents = students.filter(s => {
+        const matchesSearch = studentFilters.search === '' ||
+            s.name.toLowerCase().includes(studentFilters.search.toLowerCase());
+        const matchesSchoolYear = studentFilters.schoolYear === '' ||
+            s.schoolYear === studentFilters.schoolYear;
+        const matchesSchool = studentFilters.school === '' ||
+            s.school === studentFilters.school;
+        const matchesClass = studentFilters.className === '' ||
+            s.className === studentFilters.className; // If no class selected, match all classes
+       
+        return matchesSearch && matchesSchoolYear && matchesSchool && matchesClass;
+    });
+ 
+ 
+    // =======================
+    // Render
+    // =======================
     return (
         <div className="app">
-            <Header settings={settings} />
-
+            <Header settings={settings} onMenuClick={() => setNavOpen(!navOpen)} />
+ 
             <Toolbar
                 selectedStudent={selectedStudent}
                 selectedDate={selectedDate}
-                onAddStudent={() => { setSelectedStudent(null); setModal('student'); }} // immer „Neuen Schüler anlegen“
-                onEditStudent={() => selectedStudent && setModal('student')} // Bearbeiten weiterhin möglich
-                onAddEntry={() => selectedStudent && setModal('entry')}
+                onAddStudent={() => { setSelectedStudent(null); setModal('student'); }} // always "Add new student"
+                onEditStudent={() => selectedStudent && setModal('student')} // editing possible
+                onAddEntry={() => selectedStudent && setModal('entry')} // Add entry only if student is selected
                 onPrint={handlePrint}
                 onExport={handleExport}
                 onImport={handleImport}
                 onUndo={handleUndo}
                 onRedo={handleRedo}
-                onSearchProtocol={handleOpenSearch} // immer aktiv
-                canUndo={true}
-                canRedo={true}
+                onSearchProtocol={handleOpenSearch} // always active
+                onLoadSampleData={handleLoadSampleData}
+                onClearAllData={handleClearAllData}
+                canUndo={historyIndex > 0} // Can undo if not at the beginning of history
+                canRedo={historyIndex < history.length - 1} // Can redo if not at the end of history
             />
-
+ 
             <Navigation
                 isOpen={navOpen}
-                students={filteredStudents}
+                setNavOpen={setNavOpen} // Pass setter to toggle navigation
+                students={filteredStudents} // Pass already filtered students
                 selectedStudent={selectedStudent}
                 selectedDate={selectedDate}
+                filters={studentFilters} // Pass current student filters
+                masterData={masterData}
                 onStudentSelect={handleStudentClick}
                 onDateSelect={setSelectedDate}
-                onFilterChange={({ search }) => setStudentFilterTerm(search)}
+                onFilterChange={setStudentFilters} // Callback to update filters in App.jsx
                 onShowStats={() => setModal('statistics')}
                 onShowSettings={() => setModal('settings')}
                 onShowHelp={() => setModal('help')}
             />
-
+ 
             <MainContent
                 viewMode={viewMode}
                 selectedStudent={selectedStudent}
@@ -423,7 +536,7 @@ const App = () => {
                 entries={viewMode === 'search' ? searchResults : entries}
                 onEditEntry={(entry) => { setEditingEntry(entry); setModal('entry'); }}
             />
-
+ 
             {modal === 'student' && (
                 <StudentModal
                     student={selectedStudent}
@@ -433,13 +546,13 @@ const App = () => {
                     onDelete={handleDeleteStudent}
                 />
             )}
-
+ 
             {modal === 'entry' && (
                 <EntryModal
                     existingEntry={editingEntry}
                     student={selectedStudent}
                     date={selectedDate}
-                    masterData={masterData}
+                    masterData={masterData} // Pass masterData to EntryModal for subjects/notesTemplates
                     onClose={() => { setModal(null); setEditingEntry(null); }}
                     onSave={async (entry) => {
                         if (editingEntry) await handleUpdateEntry(entry);
@@ -449,25 +562,36 @@ const App = () => {
                     }}
                 />
             )}
-
+ 
             {modal === 'settings' && (
                 <SettingsModal
                     settings={settings}
                     masterData={masterData}
                     onClose={() => setModal(null)}
-                    onSave={(newSettings) => { setSettings(newSettings); applySettings(newSettings); }}
-                    onSaveMasterData={(md) => setMasterData(md)}
+                    onSave={async (newSettings) => {
+                        await saveSettingsToDB(db, newSettings); // Persist to DB
+                        setSettings(newSettings); // Update App.jsx state
+                        applySettings(newSettings); // Apply to UI
+                        await captureAppState(); // Capture state after saving settings
+                    }}
+                    onSaveMasterData={async (newMasterData) => {
+                        await saveMasterDataToDB(db, newMasterData); // Persist to DB
+                        setMasterData(newMasterData); // Update App.jsx state
+                        await captureAppState(); // Capture state after saving master data
+                    }}
                     setStudents={setStudents}
                     setEntries={setEntries}
                     setSelectedStudent={setSelectedStudent}
+                    setSettings={setSettings}
+                    onCaptureState={captureAppState} // Pass captureAppState for sample/clear data actions
                 />
             )}
-
+ 
             {modal === 'statistics' && <StatisticsModal onClose={() => setModal(null)} students={students} entries={entries} />}
             {modal === 'help' && <HelpModal onClose={() => setModal(null)} />}
             {searchModalOpen && <SearchModal onClose={handleCloseSearch} onSearch={handleSearch} />}
         </div>
     );
 };
-
+ 
 export default App;
