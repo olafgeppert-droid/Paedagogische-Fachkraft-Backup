@@ -1,51 +1,34 @@
 // src/components/EntryModal.jsx
 import React, { useState } from 'react';
-
+ 
 const EntryModal = ({ onClose, onSave, masterData, student, date, existingEntry }) => {
-    const [formData, setFormData] = useState(() => {
-        if (existingEntry) {
-            // Map old field names to new ones if they exist
-            return {
-                ...existingEntry,
-                subject: existingEntry.subject || existingEntry.topic || '', // New or old
-                observations: existingEntry.observations || existingEntry.notes || '', // New or old
-                measures: existingEntry.measures || existingEntry.activity || '', // New or old
-                erfolg: existingEntry.erfolg || '',
-                erfolgRating: existingEntry.erfolgRating || existingEntry.bewertung || '', // New or old
-            };
-        }
-        return {
-            subject: '',
-            observations: '',
-            measures: '',
-            erfolg: '',
-            erfolgRating: '',
-            studentId: student?.id || null,
-            date: date || new Date().toISOString().split('T')[0],
-        };
+    const [formData, setFormData] = useState(existingEntry || {
+        subject: '',
+        observations: '',
+        measures: '',
+        erfolg: '', // Text field for success
+        erfolgRating: '', // Select field for rating
+        studentId: student?.id || null,
+        date: date || new Date().toISOString().split('T')[0],
     });
-
+ 
     const [showConfirmClose, setShowConfirmClose] = useState(false);
-
-    const handleSubmit = (e) => {
+ 
+    // Formular absenden
+    const handleSubmit = async (e) => { // Made async
         e.preventDefault();
-        onSave(formData);
-        onClose();
+        await onSave(formData); // Await the save operation
+        // onClose() is now handled by the parent App.jsx after onSave completes.
     };
-
+ 
+    // Eingabeänderungen
     const handleChange = (field, value) => {
         setFormData({ ...formData, [field]: value });
     };
-
+ 
+    // Abbrechen mit Prüfung
     const handleCancel = () => {
-        const initialFormData = existingEntry ? {
-            ...existingEntry,
-            subject: existingEntry.subject || existingEntry.topic || '',
-            observations: existingEntry.observations || existingEntry.notes || '',
-            measures: existingEntry.measures || existingEntry.activity || '',
-            erfolg: existingEntry.erfolg || '',
-            erfolgRating: existingEntry.erfolgRating || existingEntry.bewertung || '',
-        } : {
+        const initialFormData = existingEntry || {
             subject: '',
             observations: '',
             measures: '',
@@ -54,14 +37,18 @@ const EntryModal = ({ onClose, onSave, masterData, student, date, existingEntry 
             studentId: student?.id || null,
             date: date || new Date().toISOString().split('T')[0],
         };
-
-        if (JSON.stringify(formData) !== JSON.stringify(initialFormData)) {
+        // Check if formData has changed from its initial state (existingEntry or default empty)
+        // Convert dates to string for comparison, as new Date() might create different objects
+        const currentFormDataNormalized = { ...formData, date: formData.date ? new Date(formData.date).toISOString().split('T')[0] : '' };
+        const initialFormDataNormalized = { ...initialFormData, date: initialFormData.date ? new Date(initialFormData.date).toISOString().split('T')[0] : '' };
+ 
+        if (JSON.stringify(currentFormDataNormalized) !== JSON.stringify(initialFormDataNormalized)) {
             setShowConfirmClose(true);
         } else {
             onClose();
         }
     };
-
+ 
     return (
         <div className="modal-overlay">
             <div className="modal large">
@@ -69,7 +56,7 @@ const EntryModal = ({ onClose, onSave, masterData, student, date, existingEntry 
                     <h2>{existingEntry ? 'Eintrag bearbeiten' : 'Neuen Eintrag hinzufügen'}</h2>
                     <button className="modal-close" onClick={handleCancel}>×</button>
                 </div>
-
+ 
                 {showConfirmClose ? (
                     <div className="confirm-close">
                         <h3>Änderungen verwerfen?</h3>
@@ -95,7 +82,7 @@ const EntryModal = ({ onClose, onSave, masterData, student, date, existingEntry 
                                 disabled
                             />
                         </div>
-
+ 
                         {/* Datum */}
                         <div className="form-group">
                             <label className="form-label">Datum</label>
@@ -107,8 +94,8 @@ const EntryModal = ({ onClose, onSave, masterData, student, date, existingEntry 
                                 required
                             />
                         </div>
-
-                        {/* Fach / Thema */}
+ 
+                        {/* Fach / Thema (using masterData.subjects) */}
                         <div className="form-group">
                             <label className="form-label">Fach / Thema</label>
                             <select
@@ -123,7 +110,7 @@ const EntryModal = ({ onClose, onSave, masterData, student, date, existingEntry 
                                 ))}
                             </select>
                         </div>
-
+ 
                         {/* Beobachtungen */}
                         <div className="form-group">
                             <label className="form-label">Beobachtungen</label>
@@ -134,7 +121,7 @@ const EntryModal = ({ onClose, onSave, masterData, student, date, existingEntry 
                                 required
                             />
                         </div>
-
+ 
                         {/* Maßnahmen */}
                         <div className="form-group">
                             <label className="form-label">Maßnahmen</label>
@@ -145,17 +132,18 @@ const EntryModal = ({ onClose, onSave, masterData, student, date, existingEntry 
                                 required
                             />
                         </div>
-
-                        {/* Erfolg */}
+ 
+                        {/* Erfolg (Textfeld) */}
                         <div className="form-group">
                             <label className="form-label">Erfolg</label>
-                            <textarea
-                                className="form-textarea large"
+                            <input
+                                type="text"
+                                className="form-input"
                                 value={formData.erfolg}
                                 onChange={(e) => handleChange('erfolg', e.target.value)}
                             />
                         </div>
-
+ 
                         {/* Erfolgsbewertung */}
                         <div className="form-group">
                             <label className="form-label">Erfolgsbewertung</label>
@@ -169,28 +157,26 @@ const EntryModal = ({ onClose, onSave, masterData, student, date, existingEntry 
                                 <option value="negativ">negativ</option>
                             </select>
                         </div>
-
-                        {/* Notizen-Vorlagen (wenn vorhanden) */}
-                        {masterData.notesTemplates && masterData.notesTemplates.length > 0 && (
-                            <div className="form-group">
-                                <label className="form-label">Notizen-Vorlagen</label>
-                                <select
-                                    className="form-select"
-                                    onChange={(e) => {
-                                        if (e.target.value) {
-                                            handleChange('observations', (formData.observations ? formData.observations + '\n' : '') + e.target.value);
-                                            e.target.value = ''; // Reset select
-                                        }
-                                    }}
-                                >
-                                    <option value="">Vorlage auswählen…</option>
-                                    {masterData.notesTemplates.map((tpl, idx) => (
-                                        <option key={idx} value={tpl}>{tpl}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-
+ 
+                        {/* Notizen-Vorlagen (using masterData.notesTemplates) */}
+                        <div className="form-group">
+                            <label className="form-label">Notizen-Vorlagen</label>
+                            <select
+                                className="form-select"
+                                onChange={(e) => {
+                                    if (e.target.value) {
+                                        handleChange('observations', formData.observations + '\n' + e.target.value);
+                                        e.target.value = ''; // Reset select to "Vorlage auswählen"
+                                    }
+                                }}
+                            >
+                                <option value="">Vorlage auswählen…</option>
+                                {masterData.notesTemplates && masterData.notesTemplates.map((tpl, idx) => (
+                                    <option key={idx} value={tpl}>{tpl}</option>
+                                ))}
+                            </select>
+                        </div>
+ 
                         {/* Buttons */}
                         <div className="form-actions">
                             <button type="button" className="button" onClick={handleCancel}>
@@ -206,23 +192,5 @@ const EntryModal = ({ onClose, onSave, masterData, student, date, existingEntry 
         </div>
     );
 };
-
-// =======================
-// Styles (optional Inline Styles, falls nicht in CSS) - Beibehalten für Vollständigkeit,
-// aber die tatsächlichen Stile kommen aus den CSS-Dateien
-// =======================
-const modalOverlayStyle = { /* ... */ };
-const modalStyle = { /* ... */ };
-const headerStyle = { /* ... */ };
-const closeButtonStyle = { /* ... */ };
-const formGroupStyle = { /* ... */ };
-const labelStyle = { /* ... */ };
-const inputStyle = { /* ... */ };
-const textareaStyle = { /* ... */ };
-const selectStyle = { /* ... */ };
-const formActionsStyle = { /* ... */ };
-const buttonStyle = { /* ... */ };
-const buttonPrimaryStyle = { /* ... */ };
-const buttonDangerStyle = { /* ... */ };
-
+ 
 export default EntryModal;
