@@ -26,4 +26,4 @@ const Header = ({ onMenuClick }) => { // Added onMenuClick prop
   );
 };
  
-export default Header
+export default Header;
