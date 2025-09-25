@@ -32,9 +32,8 @@ Um die App auf GitHub Pages zu hosten:
 
 1. Repository auf GitHub erstellen
 2. Alle Dateien hochladen
-3. In den Repository-Einstellungen zu "Pages" navigieren
-4. Branch und Ordner auswählen (meist `main` und `/root`)
-5. Nach einigen Minuten ist die App unter `https://[username].github.io/[repository-name]` verfügbar
+3. Das existierende GitHub Actions Workflow `.github/workflows/deploy.yml` wird automatisch die App bauen und auf GitHub Pages deployen, wenn Sie Änderungen in den `main`-Branch pushen.
+4. Nach einigen Minuten ist die App unter `https://[username].github.io/[repository-name]` verfügbar.
 
 ## Datenstruktur
 
@@ -61,6 +60,13 @@ Die App unterstützt alle modernen Browser mit IndexedDB-Unterstützung:
 
 ## Lizenz
 
+Dieses Projekt ist unter der MIT-Lizenz lizenziert. Weitere Details finden Sie in der `LICENSE`-Datei.
+
+---
+
+### Projekt-Dateistruktur:
+
+```
 pädagogische-dokumentation/
 ├── index.html
 ├── package.json
@@ -85,13 +91,13 @@ pädagogische-dokumentation/
 │   │   ├── SettingsModal.jsx
 │   │   ├── StatisticsModal.jsx
 │   │   ├── HelpModal.jsx
+│   │   ├── SearchModal.jsx
 │   │   └── Nations.jsx
 │   ├── utils/
-│   │   └── helpers.js          (KORRIGIERT: war utils.js)
+│   │   └── colors.js         (Farb-Hilfsfunktionen)
 │   └── database.js
-└── styles/
-    ├── main.css                 (wird ersetzt)
-    ├── components.css          (wird ersetzt)
-    ├── theme-variables.css     (NEU)
-    ├── layout-base.css         (NEU)
-    └── components-3d.css       (NEU)
+├── styles/
+│   ├── theme-variables.css
+│   ├── layout-base.css
+│   └── components-3d.css
+└── public/                     (Falls statische Assets vorhanden sind)
