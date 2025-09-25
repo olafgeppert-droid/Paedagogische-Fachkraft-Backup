@@ -64,7 +64,7 @@ const App = () => {
 
     // Undo/Redo History
     const [history, setHistory] = useState([]);
-    const [historyIndex, setHistoryIndex] = -1);
+    const [historyIndex, setHistoryIndex] = useState(-1);
 
     // =======================
     // Farb- und Theme-Einstellungen
