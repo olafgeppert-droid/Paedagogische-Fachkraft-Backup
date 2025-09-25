@@ -1,15 +1,23 @@
 import React, { useState, useEffect } from 'react';
-// Removed setupDB, loadSampleData, clearAllData imports
- 
+// Die direkten Imports von DB-Funktionen werden entfernt, da die App.jsx diese nun über Props weitergibt.
+// import { setupDB, loadSampleData, clearAllData } from '../database';
+
 const SettingsModal = ({
     settings,
     masterData,
     onClose,
-    onSave,
-    onSaveMasterData,
-    onLoadSampleData, // New prop: App.jsx's handler
-    onClearAllData    // New prop: App.jsx's handler
-    // Removed setStudents, setEntries, setSelectedStudent, setSettings, onCaptureState
+    onSave, // Callback to App.jsx for saving settings (which updates App state and DB)
+    onSaveMasterData, // Callback to App.jsx for saving masterData (which updates App state and DB)
+    // Diese Props sind nicht mehr notwendig, da die App.jsx-Handler die Zustandsaktualisierung verwalten
+    // setStudents,
+    // setEntries,
+    // setSelectedStudent,
+    // setSettings,
+    // onCaptureState,
+
+    // NEUE PROPS: Callbacks von App.jsx für Beispieldaten laden und alle Daten löschen
+    onLoadSampleData,
+    onClearAllData
 }) => {
     // =======================
     // Form-State
@@ -20,7 +28,7 @@ const SettingsModal = ({
         inputFontSize: 16,
         customColors: {}
     });
- 
+
     const [masterFormData, setMasterFormData] = useState({
         schoolYears: masterData?.schoolYears || [],
         schools: masterData?.schools || {},
@@ -28,43 +36,48 @@ const SettingsModal = ({
         activities: masterData?.activities || [],
         notesTemplates: masterData?.notesTemplates || []
     });
- 
+
     const [showMasterDataModal, setShowMasterDataModal] = useState(false);
- 
+
+    // Initialise customColors from settings, or use defaults for 'farbig' theme preview
     const [customColors, setCustomColors] = useState(settings?.customColors && Object.keys(settings.customColors).length > 0 ? settings.customColors : {
-        navigation: '#fed7aa',
+        navigation: '#fed7aa', // Match default 'farbig' theme for consistency
         toolbar: '#f8fafc',
         header: '#dc2626',
         windowBackground: '#fef7ed'
     });
- 
+
+    // Sync formData/customColors with external settings prop changes (e.g., after loading sample data or importing)
     useEffect(() => {
         setFormData(settings);
         if (settings?.customColors) {
             setCustomColors(settings.customColors);
         }
     }, [settings]);
- 
+
+    // Sync masterFormData with external masterData prop changes
     useEffect(() => {
         setMasterFormData(masterData);
     }, [masterData]);
- 
- 
+
+
     // =======================
     // Handlers
     // =======================
     const handleSubmit = async (e) => {
         e.preventDefault();
+        // Call the parent's onSave callback, which also handles DB persistence and history capture
         await onSave({ ...formData, customColors });
-        onClose();
+        onClose(); // Close modal after successful save
     };
- 
+
     const handleMasterDataSubmit = async (e) => {
         e.preventDefault();
+        // Call the parent's onSaveMasterData callback, which also handles DB persistence and history capture
         await onSaveMasterData(masterFormData);
-        setShowMasterDataModal(false);
+        setShowMasterDataModal(false); // Close master data modal
     };
- 
+
     const resetToDefault = async () => {
         const defaultSettings = {
             theme: 'hell',
@@ -77,12 +90,15 @@ const SettingsModal = ({
                 windowBackground: '#fef7ed'
             }
         };
+        // Update local state first
         setFormData(defaultSettings);
         setCustomColors(defaultSettings.customColors);
- 
+
+        // Call parent's onSave to update App.jsx state, apply settings, and capture history
         await onSave(defaultSettings);
+        // onClose() is not called here, as onSave will trigger applySettings and the modal should remain open until user explicitly closes or saves
     };
- 
+
     // =======================
     // Stammdaten-Handling (CRUD for master data items)
     // =======================
@@ -101,14 +117,14 @@ const SettingsModal = ({
             alert('Ungültiges Format. Bitte "YYYY/YYYY" eingeben.');
         }
     };
- 
+
     const removeSchoolYear = (year) => {
         setMasterFormData(prev => ({
             ...prev,
             schoolYears: prev.schoolYears.filter(y => y !== year)
         }));
     };
- 
+
     const addSchool = () => {
         const newSchool = prompt('Neue Schule hinzufügen:');
         if (newSchool && newSchool.trim()) {
@@ -124,7 +140,7 @@ const SettingsModal = ({
             alert('Schulname darf nicht leer sein.');
         }
     };
- 
+
     const removeSchool = (school) => {
         setMasterFormData(prev => {
             const newSchools = { ...prev.schools };
@@ -132,7 +148,7 @@ const SettingsModal = ({
             return { ...prev, schools: newSchools };
         });
     };
- 
+
     const addClass = (school) => {
         const newClass = prompt('Neue Klasse hinzufügen:', 'Klasse 1a');
         if (newClass && newClass.trim()) {
@@ -155,7 +171,7 @@ const SettingsModal = ({
             alert('Klassenname darf nicht leer sein.');
         }
     };
- 
+
     const removeClass = (school, className) => {
         setMasterFormData(prev => ({
             ...prev,
@@ -165,22 +181,38 @@ const SettingsModal = ({
             }
         }));
     };
- 
+
     // =======================
-    // Beispieldaten & Alle Daten löschen (Now calls App.jsx handlers)
+    // Beispieldaten & Alle Daten löschen (Delegiert nun an App.jsx über Props)
     // =======================
     const handleLoadSampleDataClick = async () => {
-        // App.jsx will handle confirmation, DB call, state updates, and history capture
-        onLoadSampleData();
-        onClose(); // Close modal after action is triggered
+        // Die Bestätigungsabfrage wird jetzt im App.jsx-Handler durchgeführt.
+        // if (!window.confirm('Beispieldaten laden? Alle vorhandenen Daten werden überschrieben!')) return;
+
+        try {
+            await onLoadSampleData(); // Delegiert den Aufruf an den App.jsx-Handler
+            // Der App.jsx-Handler schließt auch das Modal und zeigt die Erfolgsmeldung an.
+        } catch (error) {
+            // Fehlerbehandlung vom App.jsx-Handler wird weitergeleitet oder hier abgefangen
+            console.error('Fehler beim Laden der Beispieldaten:', error);
+            alert('Fehler beim Laden der Beispieldaten: ' + (error.message || error));
+        }
     };
- 
+
     const handleClearAllDataClick = async () => {
-        // App.jsx will handle confirmation, DB call, state updates, and history capture
-        onClearAllData();
-        onClose(); // Close modal after action is triggered
+        // Die Bestätigungsabfrage wird jetzt im App.jsx-Handler durchgeführt.
+        // if (!window.confirm('Alle Daten löschen? Diese Aktion ist endgültig und kann nicht rückgängig gemacht werden!')) return;
+
+        try {
+            await onClearAllData(); // Delegiert den Aufruf an den App.jsx-Handler
+            // Der App.jsx-Handler schließt auch das Modal und zeigt die Erfolgsmeldung an.
+        } catch (error) {
+            // Fehlerbehandlung vom App.jsx-Handler wird weitergeleitet oder hier abgefangen
+            console.error('Fehler beim Löschen aller Daten:', error);
+            alert('Fehler beim Löschen aller Daten: ' + (error.message || error));
+        }
     };
- 
+
     // =======================
     // JSX Return
     // =======================
@@ -193,7 +225,7 @@ const SettingsModal = ({
                         <h2>⚙️ Einstellungen</h2>
                         <button className="modal-close" onClick={onClose} aria-label="Schließen">✖️</button>
                     </div>
- 
+
                     <div className="modal-content">
                         <form onSubmit={handleSubmit}>
                             {/* Theme Section */}
@@ -222,7 +254,7 @@ const SettingsModal = ({
                                         ))}
                                     </div>
                                 </div>
- 
+
                                 {formData.theme === 'farbig' && (
                                     <div className="color-customization">
                                         <h4>🎨 Benutzerdefinierte Farben</h4>
@@ -251,7 +283,7 @@ const SettingsModal = ({
                                     </div>
                                 )}
                             </div>
- 
+
                             {/* Schriftgrößen Section */}
                             <div className="settings-section">
                                 <h3>📝 Schriftgrößen</h3>
@@ -283,7 +315,7 @@ const SettingsModal = ({
                                     ))}
                                 </div>
                             </div>
- 
+
                             {/* Stammdaten Section */}
                             <div className="settings-section">
                                 <h3>📊 Stammdaten</h3>
@@ -297,9 +329,17 @@ const SettingsModal = ({
                                         📋 Stammdaten verwalten
                                     </button>
                                 </div>
-                                {/* Removed Beispieldaten laden & Alle Daten löschen buttons from here */}
+
+                                <div className="settings-action-buttons" style={{ marginTop: '16px', display: 'flex', gap: '12px' }}>
+                                    <button type="button" className="button button-warning" onClick={handleLoadSampleDataClick}>
+                                        📂 Beispieldaten laden
+                                    </button>
+                                    <button type="button" className="button button-danger" onClick={handleClearAllDataClick}>
+                                        🗑️ Alle Daten löschen
+                                    </button>
+                                </div>
                             </div>
- 
+
                             {/* Modal Actions */}
                             <div className="modal-actions">
                                 <button
@@ -322,7 +362,7 @@ const SettingsModal = ({
                     </div>
                 </div>
             </div>
- 
+
             {/* Stammdaten Modal */}
             {showMasterDataModal && (
                 <div className="modal-overlay">
@@ -331,14 +371,14 @@ const SettingsModal = ({
                             <h2>📊 Stammdaten verwalten</h2>
                             <button className="modal-close" onClick={() => setShowMasterDataModal(false)} aria-label="Schließen">✖️</button>
                         </div>
- 
+
                         <div className="modal-content">
                             <form onSubmit={handleMasterDataSubmit}>
                                 {/* Schuljahre Section */}
                                 <div className="data-section">
                                     <h3>📅 Schuljahre</h3>
                                     <p className="section-description">Z.B. 2025/2026</p>
- 
+
                                     <div className="data-list">
                                         {masterFormData.schoolYears && masterFormData.schoolYears.map(year => (
                                             <div key={year} className="data-item">
@@ -358,17 +398,17 @@ const SettingsModal = ({
                                         ➕ Schuljahr hinzufügen
                                     </button>
                                 </div>
- 
+
                                 <div className="divider"></div>
- 
+
                                 {/* Schulen und Klassen Section */}
                                 <div className="data-section">
                                     <h3>🏫 Schulen und Klassen</h3>
- 
+
                                     <button type="button" className="button button-outline" onClick={addSchool}>
                                         ➕ Neue Schule hinzufügen
                                     </button>
- 
+
                                     <div className="schools-list">
                                         {masterFormData.schools && Object.entries(masterFormData.schools).map(([school, classes]) => (
                                             <div key={school} className="school-card">
@@ -383,7 +423,7 @@ const SettingsModal = ({
                                                         ❌
                                                     </button>
                                                 </div>
- 
+
                                                 <p className="classes-title">Klassen für "{school}"</p>
                                                 <div className="classes-list">
                                                     {classes && classes.map(className => (
@@ -411,9 +451,9 @@ const SettingsModal = ({
                                         ))}
                                     </div>
                                 </div>
- 
+
                                 <div className="divider"></div>
- 
+
                                 <div className="data-section">
                                     <h3>📚 Fächer / Themen</h3>
                                     <div className="data-list">
@@ -448,9 +488,9 @@ const SettingsModal = ({
                                         ➕ Fach/Thema hinzufügen
                                     </button>
                                 </div>
- 
+
                                 <div className="divider"></div>
- 
+
                                 <div className="data-section">
                                     <h3>🎯 Aktivitäten</h3>
                                     <div className="data-list">
@@ -485,9 +525,9 @@ const SettingsModal = ({
                                         ➕ Aktivität hinzufügen
                                     </button>
                                 </div>
- 
+
                                 <div className="divider"></div>
- 
+
                                 <div className="data-section">
                                     <h3>🗒️ Notizvorlagen</h3>
                                     <div className="data-list">
@@ -522,17 +562,7 @@ const SettingsModal = ({
                                         ➕ Vorlage hinzufügen
                                     </button>
                                 </div>
- 
-                                <div className="divider"></div> {/* Added divider for separation */}
-                                <div className="settings-action-buttons" style={{ marginTop: '16px', display: 'flex', gap: '12px' }}>
-                                    <button type="button" className="button button-warning" onClick={handleLoadSampleDataClick}>
-                                        📂 Beispieldaten laden
-                                    </button>
-                                    <button type="button" className="button button-danger" onClick={handleClearAllDataClick}>
-                                        🗑️ Alle Daten löschen
-                                    </button>
-                                </div>
- 
+
                                 <div className="modal-actions">
                                     <button type="button" className="button button-outline" onClick={() => setShowMasterDataModal(false)}>
                                         ❌ Schließen
@@ -549,5 +579,5 @@ const SettingsModal = ({
         </>
     );
 };
- 
+
 export default SettingsModal;
