@@ -23,7 +23,7 @@ body {
         "header header"
         "toolbar toolbar"
         "nav main";
-    grid-template-rows: var(--header-height, 135px) auto 1fr;
+    grid-template-rows: var(--header-height, 70px) auto 1fr; /* Header feste Höhe, Toolbar auto, Nav/Main füllen Rest */
     grid-template-columns: var(--sidebar-width, 300px) 1fr;
     height: 100vh;
     width: 100vw;
@@ -106,16 +106,16 @@ body {
     position: sticky;
     top: 0;
     z-index: 900;
-    height: auto;         /* Auto, damit Buttons nicht abgeschnitten werden */
-    min-height: 135px;     /* Optional, für Grundhöhe */
-    overflow: visible;    /* Wichtig, sonst werden Buttons abgeschnitten */
+    height: auto;
+    min-height: 135px;
+    overflow: visible;
 }
 
 .toolbar-row {
     display: flex;
-    flex-wrap: wrap;            /* Buttons umbrechen, nicht abschneiden */
-    justify-content: center;    /* Zentriert */
-    align-items: center;        /* Vertikal zentriert */
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
     width: 100%;
     gap: 0.75rem;
     padding: 0;
@@ -125,10 +125,10 @@ body {
 
 /* Buttons in Toolbar */
 .toolbar-row .button {
-    height: auto;              /* Keine feste Höhe */
-    min-height: 40px;          /* Minimum für Touch */
+    height: auto;
+    min-height: 40px;
     padding: 0.75rem 1.25rem;
-    flex: 0 1 auto;            /* Shrink/Grow korrekt */
+    flex: 0 1 auto;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -146,7 +146,7 @@ body {
     overflow-y: auto;
     overflow-x: hidden;
     border-right: 2px solid var(--border-color, #d1d5db);
-    height: calc(100vh - var(--header-height, 70px) - var(--toolbar-height, 110px));
+    /* Höhe wird durch grid-template-rows 1fr gesteuert, explizite calc-Höhe entfernt */
     width: var(--sidebar-width, 300px);
 }
 
@@ -166,7 +166,7 @@ body {
     overflow-y: auto;
     overflow-x: hidden;
     background-color: var(--background-color, #ffffff);
-    height: calc(100vh - var(--header-height, 70px) - var(--toolbar-height, 110px));
+    /* Höhe wird durch grid-template-rows 1fr gesteuert, explizite calc-Höhe entfernt */
 }
 
 /* === SUCH- UND FILTERBEREICH === */
@@ -523,5 +523,3 @@ p, li, span {
         padding: 0.4rem 0.6rem;
     }
 }
-
-/* === ENDE DER CUSTOM STYLES === */
