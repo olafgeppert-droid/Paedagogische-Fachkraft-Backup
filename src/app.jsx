@@ -45,7 +45,8 @@ const App = () => {
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [viewMode, setViewMode] = useState('student'); // 'student', 'day', 'search'
     const [settings, setSettings] = useState({ theme: 'hell', fontSize: 16, inputFontSize: 16, customColors: {} });
-    const [masterData, setMasterData] = useState({ schoolYears: [], schools: {}, subjects: [], activities: [], notesTemplates: [] });
+    // Korrektur: masterData sollte keine 'subjects' und 'activities' mehr enthalten, da sie nicht als Dropdowns verwendet werden.
+    const [masterData, setMasterData] = useState({ schoolYears: [], schools: {}, notesTemplates: [] }); // Geändert
     const [modal, setModal] = useState(null);
     const [navOpen, setNavOpen] = useState(false); // State for navigation drawer
     const [editingEntry, setEditingEntry] = useState(null);
@@ -109,7 +110,12 @@ const App = () => {
  
                 // Load Master Data
                 const masterDataLoaded = await database.get('masterData', 1);
-                if (masterDataLoaded) setMasterData(masterDataLoaded);
+                // Korrektur: Stellen Sie sicher, dass masterData die erwartete Struktur hat, auch wenn alte DB-Einträge 'subjects'/'activities' enthalten.
+                setMasterData({
+                    schoolYears: masterDataLoaded?.schoolYears || [],
+                    schools: masterDataLoaded?.schools || {},
+                    notesTemplates: masterDataLoaded?.notesTemplates || []
+                });
  
                 // Load Students
                 const allStudents = await getStudents(database);
@@ -291,7 +297,12 @@ const App = () => {
                         setSettings(convertedSettings);
                         applySettings(convertedSettings); // Re-apply theme
                     }
-                    if (importedData.masterData) setMasterData(importedData.masterData);
+                    // Korrektur: masterData an neue Struktur anpassen
+                    if (importedData.masterData) setMasterData({
+                        schoolYears: importedData.masterData.schoolYears || [],
+                        schools: importedData.masterData.schools || {},
+                        notesTemplates: importedData.masterData.notesTemplates || []
+                    });
                     setStudents(importedData.students || []);
  
                     // Select the first student if available, or null
@@ -334,7 +345,12 @@ const App = () => {
             // Update App.jsx states with loaded data
             setStudents(loadedData.students);
             setEntries(loadedData.entries);
-            setMasterData(loadedData.masterData);
+            // Korrektur: masterData an neue Struktur anpassen
+            setMasterData({
+                schoolYears: loadedData.masterData.schoolYears || [],
+                schools: loadedData.masterData.schools || {},
+                notesTemplates: loadedData.masterData.notesTemplates || []
+            });
            
             // Reset settings to default for sample data or specific sample settings
             const defaultSettings = { theme: 'hell', fontSize: 16, inputFontSize: 16, customColors: {} };
@@ -366,7 +382,12 @@ const App = () => {
             setStudents(clearedData.students);
             setEntries(clearedData.entries);
             setSettings(clearedData.settings);
-            setMasterData(clearedData.masterData);
+            // Korrektur: masterData an neue Struktur anpassen
+            setMasterData({
+                schoolYears: clearedData.masterData.schoolYears || [],
+                schools: clearedData.masterData.schools || {},
+                notesTemplates: clearedData.masterData.notesTemplates || []
+            });
  
             setSelectedStudent(null);
             setSelectedDate(new Date().toISOString().split('T')[0]);
@@ -408,40 +429,51 @@ const App = () => {
                 const studentNameLower = studentObj ? studentObj.name.toLowerCase() : '';
  
                 // Helper function to check a field (or its old equivalents) for match
+                // Korrektur: 'oldField1' und 'oldField2' sind nun optional und 'activity' wird nicht mehr für 'subject' gesucht
                 const checkField = (newField, oldField1, oldField2, value, exactMatch) => {
                     const fieldValue1 = (e[newField] || '').toString().toLowerCase();
-                    const fieldValue2 = (e[oldField1] || '').toString().toLowerCase();
-                    const fieldValue3 = (e[oldField2] || '').toString().toLowerCase(); // Optional: For activity/measures
- 
                     const match1 = exactMatch ? fieldValue1 === value : fieldValue1.includes(value);
-                    const match2 = exactMatch ? fieldValue2 === value : fieldValue2.includes(value);
-                    const match3 = exactMatch ? fieldValue3 === value : fieldValue3.includes(value);
- 
-                    return match1 || match2 || match3;
+                    if (match1) return true;
+
+                    if (oldField1) {
+                        const fieldValue2 = (e[oldField1] || '').toString().toLowerCase();
+                        const match2 = exactMatch ? fieldValue2 === value : fieldValue2.includes(value);
+                        if (match2) return true;
+                    }
+                    if (oldField2) {
+                        const fieldValue3 = (e[oldField2] || '').toString().toLowerCase();
+                        const match3 = exactMatch ? fieldValue3 === value : fieldValue3.includes(value);
+                        if (match3) return true;
+                    }
+                    return false;
                 };
  
                 switch (searchType) {
-                    case 'topic':
-                    case 'thema':
-                        return checkField('subject', 'topic', 'activity', searchTerm, isExact);
+                    case 'subject': // Korrektur: 'topic' wurde zu 'subject' in SearchModal
+                        // Korrektur: Nur 'subject' und alte 'topic' werden gesucht, 'activity' hier entfernt
+                        return checkField('subject', 'topic', null, searchTerm, isExact);
                     case 'rating':
                     case 'bewertung':
                         const ratingValue = (e.erfolgRating || e.bewertung || '').toString().toLowerCase().trim();
-                        if (searchTerm === '' || searchTerm === 'leer') {
-                            return ratingValue === ''; // Search for empty ratings
+                        if (searchTerm === 'leer') { // Suche nach explizit leerer Bewertung
+                            return ratingValue === '';
+                        } else if (searchTerm === '') { // Wenn "Bitte wählen" ausgewählt ist, alle Einträge anzeigen
+                            return true;
                         }
-                        return ratingValue === searchTerm; // Search for 'positiv' or 'negativ'
+                        return ratingValue === searchTerm; // Suche nach 'positiv' oder 'negativ'
+                    case 'measures': // Korrektur: Neuer Suchtyp für Maßnahmen
+                        return checkField('measures', 'activity', null, searchTerm, isExact); // 'activity' als alte Bezeichnung für 'measures'
                     case 'name':
                         return studentNameLower.includes(searchTerm);
                     case 'all':
                     default:
                         // Search all relevant fields (new and old)
                         const searchableFields = [
-                            e.subject, e.topic, e.activity, // Subject, old Topic/Activity
-                            e.observations, e.notes,      // Observations, old Notes
-                            e.measures,                   // Measures
-                            e.erfolg,                     // Success (text)
-                            e.erfolgRating, e.bewertung   // Success Rating, old Rating
+                            e.subject, e.topic, // Fach / Thema, alter topic
+                            e.observations, e.notes,      // Beobachtungen, alte Notes
+                            e.measures, e.activity,       // Maßnahmen, alte activity
+                            e.erfolg,                     // Erfolg (text)
+                            e.erfolgRating, e.bewertung   // Erfolgsbewertung, alte Bewertung
                         ].filter(f => f != null && f !== '').map(f => f.toString().toLowerCase());
  
                         if (studentNameLower.includes(searchTerm)) return true; // Always check student name
@@ -552,7 +584,7 @@ const App = () => {
                     existingEntry={editingEntry}
                     student={selectedStudent}
                     date={selectedDate}
-                    masterData={masterData} // Pass masterData to EntryModal for subjects/notesTemplates
+                    masterData={masterData} // Pass masterData to EntryModal for notesTemplates
                     onClose={() => { setModal(null); setEditingEntry(null); }}
                     onSave={async (entry) => {
                         if (editingEntry) await handleUpdateEntry(entry);
@@ -575,8 +607,14 @@ const App = () => {
                         await captureAppState(); // Capture state after saving settings
                     }}
                     onSaveMasterData={async (newMasterData) => {
-                        await saveMasterDataToDB(db, newMasterData); // Persist to DB
-                        setMasterData(newMasterData); // Update App.jsx state
+                        // Korrektur: Stellen Sie sicher, dass nur die erlaubten Masterdaten gespeichert werden
+                        const filteredMasterData = {
+                            schoolYears: newMasterData.schoolYears || [],
+                            schools: newMasterData.schools || {},
+                            notesTemplates: newMasterData.notesTemplates || []
+                        };
+                        await saveMasterDataToDB(db, filteredMasterData); // Persist to DB
+                        setMasterData(filteredMasterData); // Update App.jsx state
                         await captureAppState(); // Capture state after saving master data
                     }}
                     setStudents={setStudents}
