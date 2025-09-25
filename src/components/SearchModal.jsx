@@ -16,10 +16,8 @@ const SearchModal = ({ onClose, onSearch }) => {
             value: safeValue
         };
  
-        if (criteria.type === 'all' || criteria.value.length > 0) {
+        if (criteria.type === 'all' || criteria.value.length > 0 || (criteria.type === 'rating' && (criteria.value === '' || criteria.value === 'leer'))) { // Korrektur: Empty rating search ist erlaubt
             onSearch(criteria);
-        } else if (criteria.type === 'rating' && (criteria.value === '' || criteria.value === 'leer')) {
-             onSearch(criteria); // Allow searching for empty rating
         } else {
             // For other types, if value is empty, do not search
             // (onSearch handler in App.jsx also checks for !term.trim())
@@ -56,7 +54,8 @@ const SearchModal = ({ onClose, onSearch }) => {
                         >
                             <option value="all">Allgemein (alle Felder)</option>
                             <option value="name">Schüler-Name</option>
-                            <option value="topic">Thema/Aktivität</option>
+                            <option value="subject">Fach / Thema</option> {/* Korrektur: 'topic' zu 'subject', 'Aktivität' entfernt */}
+                            <option value="measures">Maßnahmen</option> {/* Korrektur: Neuer Suchtyp für Maßnahmen */}
                             <option value="rating">Erfolgsbewertung</option>
                         </select>
                     </div>
@@ -65,7 +64,9 @@ const SearchModal = ({ onClose, onSearch }) => {
                         <div style={formGroupStyle}>
                             <label htmlFor="searchTerm">
                                 {searchType === 'name' ? 'Schüler-Name:' :
-                                 searchType === 'topic' ? 'Thema/Aktivität:' : 'Suchbegriff:'}
+                                 searchType === 'subject' ? 'Fach / Thema eingeben:' : // Korrektur
+                                 searchType === 'measures' ? 'Maßnahmen eingeben:' : // Korrektur
+                                 'Suchbegriff eingeben:'}
                             </label>
                             <input
                                 id="searchTerm"
@@ -74,7 +75,8 @@ const SearchModal = ({ onClose, onSearch }) => {
                                 onChange={(e) => setSearchTerm(e.target.value || '')}
                                 placeholder={
                                     searchType === 'name' ? 'Schülername eingeben...' :
-                                    searchType === 'topic' ? 'Thema oder Aktivität eingeben...' :
+                                    searchType === 'subject' ? 'Fach oder Thema eingeben...' : // Korrektur
+                                    searchType === 'measures' ? 'Maßnahmen beschreiben...' : // Korrektur
                                     'Suchbegriff eingeben...'
                                 }
                                 style={inputStyle}
