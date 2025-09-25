@@ -7,7 +7,8 @@ const Navigation = ({
     selectedStudent = null,
     selectedDate = '',
     filters = { search: '', schoolYear: '', school: '', className: '' }, // Initial filters passed from App.jsx
-    masterData = { schoolYears: [], schools: {}, subjects: [], activities: [], notesTemplates: [] },
+    // Korrektur: masterData Standardwerte an neue Struktur anpassen
+    masterData = { schoolYears: [], schools: {}, notesTemplates: [] }, // Geändert
     onStudentSelect = () => {},
     onDateSelect = () => {},
     onFilterChange = () => {}, // This now reports ALL local filters up to App.jsx
