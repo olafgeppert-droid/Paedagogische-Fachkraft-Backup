@@ -23,11 +23,10 @@ const SettingsModal = ({
         customColors: {}
     });
  
+    // Korrektur: masterFormData sollte keine 'subjects' und 'activities' mehr enthalten
     const [masterFormData, setMasterFormData] = useState({
         schoolYears: masterData?.schoolYears || [],
         schools: masterData?.schools || {},
-        subjects: masterData?.subjects || [],
-        activities: masterData?.activities || [],
         notesTemplates: masterData?.notesTemplates || []
     });
  
@@ -51,7 +50,11 @@ const SettingsModal = ({
  
     // Sync masterFormData with external masterData prop changes
     useEffect(() => {
-        setMasterFormData(masterData);
+        setMasterFormData({
+            schoolYears: masterData?.schoolYears || [],
+            schools: masterData?.schools || {},
+            notesTemplates: masterData?.notesTemplates || []
+        });
     }, [masterData]);
  
  
@@ -68,6 +71,7 @@ const SettingsModal = ({
     const handleMasterDataSubmit = async (e) => {
         e.preventDefault();
         // Call the parent's onSaveMasterData callback, which also handles DB persistence and history capture
+        // Korrektur: onSaveMasterData wird die Daten schon filtern, hier nur die Übergabe.
         await onSaveMasterData(masterFormData);
         setShowMasterDataModal(false); // Close master data modal
     };
@@ -175,6 +179,26 @@ const SettingsModal = ({
             }
         }));
     };
+    
+    // Korrektur: Fächer / Themen und Aktivitäten Listen entfernt, da sie nicht mehr über Stammdaten verwaltet werden.
+    const addNotesTemplate = () => {
+        const newItem = prompt('Neue Notizvorlage hinzufügen:');
+        if (newItem && newItem.trim() && !masterFormData.notesTemplates.includes(newItem)) {
+            setMasterFormData(prev => ({
+                ...prev,
+                notesTemplates: [...prev.notesTemplates, newItem].sort()
+            }));
+        } else if (newItem) {
+            alert('Eingabe ungültig oder Vorlage existiert bereits.');
+        }
+    };
+ 
+    const removeNotesTemplate = (index) => {
+        setMasterFormData(prev => ({
+            ...prev,
+            notesTemplates: prev.notesTemplates.filter((_, i) => i !== index)
+        }));
+    };
  
     // =======================
     // Beispieldaten & Alle Daten löschen
@@ -189,7 +213,12 @@ const SettingsModal = ({
             // Update App.jsx states directly
             setStudents(loadedData.students);
             setEntries(loadedData.entries);
-            setMasterData(loadedData.masterData); // This will update masterFormData too via useEffect
+            // Korrektur: masterData an neue Struktur anpassen
+            setMasterData({
+                schoolYears: loadedData.masterData.schoolYears || [],
+                schools: loadedData.masterData.schools || {},
+                notesTemplates: loadedData.masterData.notesTemplates || []
+            });
  
             setSettings(prevSettings => ({
                 ...prevSettings,
@@ -221,7 +250,12 @@ const SettingsModal = ({
             setStudents(clearedData.students);
             setEntries(clearedData.entries);
             setSettings(clearedData.settings);
-            setMasterData(clearedData.masterData);
+            // Korrektur: masterData an neue Struktur anpassen
+            setMasterData({
+                schoolYears: clearedData.masterData.schoolYears || [],
+                schools: clearedData.masterData.schools || {},
+                notesTemplates: clearedData.masterData.notesTemplates || []
+            });
             setSelectedStudent(null); // No student selected after clearing all
            
             await onCaptureState(); // Capture state in App.jsx after all updates
@@ -340,7 +374,7 @@ const SettingsModal = ({
                             <div className="settings-section">
                                 <h3>📊 Stammdaten</h3>
                                 <div className="master-data-card">
-                                    <p>Verwalten Sie Schuljahre, Schulen und Klassen, Fächer und Vorlagen.</p>
+                                    <p>Verwalten Sie Schuljahre, Schulen und Klassen, Notizvorlagen.</p> {/* Korrektur */}
                                     <button
                                         type="button"
                                         className="button button-primary"
@@ -473,81 +507,8 @@ const SettingsModal = ({
                                 </div>
  
                                 <div className="divider"></div>
- 
-                                <div className="data-section">
-                                    <h3>📚 Fächer / Themen</h3>
-                                    <div className="data-list">
-                                        {masterFormData.subjects.map((item, index) => (
-                                            <div key={index} className="data-item">
-                                                <span className="item-text">{item}</span>
-                                                <button
-                                                    type="button"
-                                                    className="button button-danger button-icon"
-                                                    onClick={() => setMasterFormData(prev => ({ ...prev, subjects: prev.subjects.filter((_, i) => i !== index) }))}
-                                                >
-                                                    ❌
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <button
-                                        type="button"
-                                        className="button button-outline"
-                                        onClick={() => {
-                                            const newItem = prompt('Neues Fach/Thema hinzufügen:');
-                                            if (newItem && newItem.trim() && !masterFormData.subjects.includes(newItem)) {
-                                                setMasterFormData(prev => ({
-                                                    ...prev,
-                                                    subjects: [...prev.subjects, newItem].sort()
-                                                }));
-                                            } else if (newItem) {
-                                                alert('Eingabe ungültig oder Fach/Thema existiert bereits.');
-                                            }
-                                        }}
-                                    >
-                                        ➕ Fach/Thema hinzufügen
-                                    </button>
-                                </div>
- 
-                                <div className="divider"></div>
- 
-                                <div className="data-section">
-                                    <h3>🎯 Aktivitäten</h3>
-                                    <div className="data-list">
-                                        {masterFormData.activities.map((item, index) => (
-                                            <div key={index} className="data-item">
-                                                <span className="item-text">{item}</span>
-                                                <button
-                                                    type="button"
-                                                    className="button button-danger button-icon"
-                                                    onClick={() => setMasterFormData(prev => ({ ...prev, activities: prev.activities.filter((_, i) => i !== index) }))}
-                                                >
-                                                    ❌
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <button
-                                        type="button"
-                                        className="button button-outline"
-                                        onClick={() => {
-                                            const newItem = prompt('Neue Aktivität hinzufügen:');
-                                            if (newItem && newItem.trim() && !masterFormData.activities.includes(newItem)) {
-                                                setMasterFormData(prev => ({
-                                                    ...prev,
-                                                    activities: [...prev.activities, newItem].sort()
-                                                }));
-                                            } else if (newItem) {
-                                                alert('Eingabe ungültig oder Aktivität existiert bereits.');
-                                            }
-                                        }}
-                                    >
-                                        ➕ Aktivität hinzufügen
-                                    </button>
-                                </div>
- 
-                                <div className="divider"></div>
- 
+                                {/* Korrektur: Fächer / Themen Sektion entfernt */}
+                                {/* Korrektur: Aktivitäten Sektion entfernt */}
                                 <div className="data-section">
                                     <h3>🗒️ Notizvorlagen</h3>
                                     <div className="data-list">
@@ -557,7 +518,7 @@ const SettingsModal = ({
                                                 <button
                                                     type="button"
                                                     className="button button-danger button-icon"
-                                                    onClick={() => setMasterFormData(prev => ({ ...prev, notesTemplates: prev.notesTemplates.filter((_, i) => i !== index) }))}
+                                                    onClick={() => removeNotesTemplate(index)} // Geänderte Referenz
                                                 >
                                                     ❌
                                                 </button>
@@ -567,17 +528,7 @@ const SettingsModal = ({
                                     <button
                                         type="button"
                                         className="button button-outline"
-                                        onClick={() => {
-                                            const newItem = prompt('Neue Notizvorlage hinzufügen:');
-                                            if (newItem && newItem.trim() && !masterFormData.notesTemplates.includes(newItem)) {
-                                                setMasterFormData(prev => ({
-                                                    ...prev,
-                                                    notesTemplates: [...prev.notesTemplates, newItem].sort()
-                                                }));
-                                            } else if (newItem) {
-                                                alert('Eingabe ungültig oder Vorlage existiert bereits.');
-                                            }
-                                        }}
+                                        onClick={addNotesTemplate} // Geänderte Referenz
                                     >
                                         ➕ Vorlage hinzufügen
                                     </button>
