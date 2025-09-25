@@ -374,7 +374,7 @@ const SettingsModal = ({
                                     className="button button-secondary button-back-to-main"
                                     onClick={resetToDefault}
                                 >
-                                    🔄 Standard
+                                    🔄 Standardeinstellungen
                                 </button>
                                 <div className="action-group">
                                     <button type="button" className="button button-outline" onClick={onClose}>
