@@ -166,14 +166,25 @@ export const undo = async (db, history, historyIndex, setHistoryIndex, setStuden
         for (const s of prevState.students) await tx.objectStore('students').add(s);
         for (const e of prevState.entries) await tx.objectStore('entries').add(e);
         if (prevState.settings) await tx.objectStore('settings').put(prevState.settings);
-        if (prevState.masterData) await tx.objectStore('masterData').put(prevState.masterData);
+        // Korrektur: masterData an neue Struktur anpassen
+        if (prevState.masterData) await tx.objectStore('masterData').put({
+            id: 1, // Stellen Sie sicher, dass die ID für masterData 1 ist
+            schoolYears: prevState.masterData.schoolYears || [],
+            schools: prevState.masterData.schools || {},
+            notesTemplates: prevState.masterData.notesTemplates || []
+        });
         await tx.done;
  
         // Update React states in App.jsx
         setStudents(prevState.students || []);
         setEntries(prevState.entries || []);
         setSettings(prevState.settings || { theme: 'hell', fontSize: 16, inputFontSize: 16, customColors: {} });
-        setMasterData(prevState.masterData || { schoolYears: [], schools: {}, subjects: [], activities: [], notesTemplates: [] });
+        // Korrektur: masterData an neue Struktur anpassen
+        setMasterData({
+            schoolYears: prevState.masterData?.schoolYears || [],
+            schools: prevState.masterData?.schools || {},
+            notesTemplates: prevState.masterData?.notesTemplates || []
+        });
        
         setHistoryIndex(historyIndex - 1);
     } catch (err) {
@@ -194,14 +205,25 @@ export const redo = async (db, history, historyIndex, setHistoryIndex, setStuden
         for (const s of nextState.students) await tx.objectStore('students').add(s);
         for (const e of nextState.entries) await tx.objectStore('entries').add(e);
         if (nextState.settings) await tx.objectStore('settings').put(nextState.settings);
-        if (nextState.masterData) await tx.objectStore('masterData').put(nextState.masterData);
+        // Korrektur: masterData an neue Struktur anpassen
+        if (nextState.masterData) await tx.objectStore('masterData').put({
+            id: 1, // Stellen Sie sicher, dass die ID für masterData 1 ist
+            schoolYears: nextState.masterData.schoolYears || [],
+            schools: nextState.masterData.schools || {},
+            notesTemplates: nextState.masterData.notesTemplates || []
+        });
         await tx.done;
  
         // Update React states in App.jsx
         setStudents(nextState.students || []);
         setEntries(nextState.entries || []);
         setSettings(nextState.settings || { theme: 'hell', fontSize: 16, inputFontSize: 16, customColors: {} });
-        setMasterData(nextState.masterData || { schoolYears: [], schools: {}, subjects: [], activities: [], notesTemplates: [] });
+        // Korrektur: masterData an neue Struktur anpassen
+        setMasterData({
+            schoolYears: nextState.masterData?.schoolYears || [],
+            schools: nextState.masterData?.schools || {},
+            notesTemplates: nextState.masterData?.notesTemplates || []
+        });
        
         setHistoryIndex(historyIndex + 1);
     } catch (err) {
@@ -235,7 +257,13 @@ export const _importDataInternal = async (db, file) => {
                 if (data.settings) await tx.objectStore('settings').put(data.settings);
                
                 await tx.objectStore('masterData').clear();
-                if (data.masterData) await tx.objectStore('masterData').put(data.masterData);
+                // Korrektur: Stellen Sie sicher, dass nur die erlaubten Masterdaten importiert werden
+                if (data.masterData) await tx.objectStore('masterData').put({
+                    id: 1,
+                    schoolYears: data.masterData.schoolYears || [],
+                    schools: data.masterData.schools || {},
+                    notesTemplates: data.masterData.notesTemplates || []
+                });
                
                 await tx.done;
  
@@ -261,10 +289,13 @@ export const loadSampleData = async (db) => {
         await tx.objectStore('entries').clear();
         await tx.objectStore('masterData').clear();
  
+        // Korrektur: Sample Students mit fehlenden Feldern ergänzt
         const sampleStudents = [
-            { id: 1, name: 'Kevin Mustermann', schoolYear: '2025/2026', school: 'Ostschule', className: '1a', gender: 'männlich', nationality: 'Deutschland', germanLevel: '2', notes: 'Sehr aufmerksamer Schüler' },
-            { id: 2, name: 'Anna Beispiel', schoolYear: '2025/2026', school: 'Heinz-Sielmann-Grundschule', className: '2b', gender: 'weiblich', nationality: 'Türkei', germanLevel: '1', notes: 'Braucht Unterstützung in Mathematik' },
-            { id: 3, name: 'Lukas Schmidt', schoolYear: '2025/2026', school: 'Ostschule', className: '1b', gender: 'männlich', nationality: 'Deutschland', germanLevel: '3', notes: 'Sehr sozial' }
+            { id: 1, name: 'Kevin Mustermann', schoolYear: '2025/2026', school: 'Ostschule', className: '1a', gender: 'männlich', nationality: 'Deutschland', germanLevel: '2 - Gut', notes: 'Sehr aufmerksamer Schüler, zeigt großes Interesse an neuen Themen.' },
+            { id: 2, name: 'Anna Beispiel', schoolYear: '2025/2026', school: 'Heinz-Sielmann-Grundschule', className: '2b', gender: 'weiblich', nationality: 'Türkei', germanLevel: '1 - Sehr gut', notes: 'Braucht Unterstützung in Mathematik, ist aber sehr motiviert.' },
+            { id: 3, name: 'Lukas Schmidt', schoolYear: '2025/2026', school: 'Ostschule', className: '1b', gender: 'männlich', nationality: 'Ukraine', germanLevel: '4 - Ausreichend', notes: 'Zeigt gute Fortschritte in Deutsch, benötigt jedoch noch gezielte Förderung in Grammatik.' },
+            { id: 4, name: 'Maria Müller', schoolYear: '2024/2025', school: 'Westschule', className: '3a', gender: 'weiblich', nationality: 'Syrien', germanLevel: '3 - Befriedigend', notes: 'Integration in die Klasse läuft gut, besonders aktiv im Kunstunterricht.' },
+            { id: 5, name: 'Omar Al-Hassan', schoolYear: '2024/2025', school: 'Nord-Grundschule', className: '4b', gender: 'männlich', nationality: 'Afghanistan', germanLevel: '5 - Mangelhaft', notes: 'Sprachliche Barriere erschwert die Teilnahme, sucht aber aktiv Kontakt zu Mitschülern.' }
         ];
         for (const student of sampleStudents) await tx.objectStore('students').put(student);
  
@@ -272,19 +303,22 @@ export const loadSampleData = async (db) => {
             { id: 1, studentId: 1, date: '2025-09-01', subject: 'Mathematik', observations: 'Hat gut mitgemacht', measures: 'Individuelle Förderung', erfolg: 'Gut verstanden', erfolgRating: 'positiv' },
             { id: 2, studentId: 2, date: '2025-09-01', subject: 'Deutsch', observations: 'Brauchte Hilfestellung', measures: 'Zusätzliche Erklärungen', erfolg: 'Teilweise verstanden', erfolgRating: 'negativ' },
             { id: 3, studentId: 3, date: '2025-09-02', subject: 'Sachkunde', observations: 'Sehr interessiert', measures: 'Vertiefende Aufgaben', erfolg: 'Hervorragende Mitarbeit', erfolgRating: 'positiv' },
-            { id: 4, studentId: 1, date: '2025-09-03', subject: 'Sport', observations: 'Viel Energie', measures: 'Mehr Bewegungsmöglichkeiten', erfolg: 'Gut ausgepowert', erfolgRating: '' }
+            { id: 4, studentId: 1, date: '2025-09-03', subject: 'Sport', observations: 'Viel Energie', measures: 'Mehr Bewegungsmöglichkeiten', erfolg: 'Gut ausgepowert', erfolgRating: '' }, // Beispieldaten für leere Erfolgsbewertung
+            { id: 5, studentId: 4, date: '2024-10-15', subject: 'Kunst', observations: 'Hat ein kreatives Bild gemalt.', measures: 'Lob und Ermutigung, Bild im Klassenzimmer ausstellen.', erfolg: 'Stolz auf die eigene Leistung.', erfolgRating: 'positiv' },
+            { id: 6, studentId: 5, date: '2024-11-05', subject: 'Deutsch', observations: 'Schwierigkeiten beim Verständnis von Aufgabenstellungen.', measures: 'Aufgabenstellungen vereinfachen und visuell unterstützen.', erfolg: 'Leichte Verbesserung, benötigt weitere Unterstützung.', erfolgRating: 'negativ' }
         ];
         for (const entry of sampleEntries) await tx.objectStore('entries').put(entry);
  
+        // Korrektur: 'subjects' und 'activities' aus den defaultMasterData entfernt
         const defaultMasterData = {
             id: 1,
             schoolYears: ['2025/2026', '2024/2025', '2023/2024'],
             schools: {
                 'Ostschule': ['1a','1b','2a'],
-                'Heinz-Sielmann-Grundschule': ['2b','3c']
+                'Heinz-Sielmann-Grundschule': ['2b','3c'],
+                'Westschule': ['3a', '3b'],
+                'Nord-Grundschule': ['4a', '4b']
             },
-            subjects: ['Mathematik','Deutsch','Sachkunde','Sport','Englisch'],
-            activities: ['Einzelarbeit', 'Gruppenarbeit', 'Präsentation', 'Spielerisches Lernen'],
             notesTemplates: ['Schnelle Auffassungsgabe', 'Braucht mehr Übung', 'Zeigt gute Teamfähigkeit', 'Konzentriert sich gut']
         };
         await tx.objectStore('masterData').put(defaultMasterData);
@@ -308,11 +342,12 @@ export const clearAllData = async (db) => {
         await tx.done;
  
         // Return empty data structures for App.jsx to update states
+        // Korrektur: 'subjects' und 'activities' aus dem masterData-Reset entfernt
         return {
             students: [],
             entries: [],
             settings: { theme: 'hell', fontSize: 16, inputFontSize: 16, customColors: {} },
-            masterData: { schoolYears: [], schools: {}, subjects: [], activities: [], notesTemplates: [] }
+            masterData: { schoolYears: [], schools: {}, notesTemplates: [] }
         };
     } catch (err) {
         console.error('Fehler beim Löschen aller Daten:', err);
