@@ -52,6 +52,8 @@ const App = () => {
     const [navOpen, setNavOpen] = useState(false); // State for navigation drawer
     const [editingEntry, setEditingEntry] = useState(null);
     const [searchModalOpen, setSearchModalOpen] = useState(false);
+    // NEU: State für ALLE Einträge, die an das Statistik-Modal übergeben werden
+    const [globalEntriesForStats, setGlobalEntriesForStats] = useState([]);
     const [searchResults, setSearchResults] = useState([]);
 
     // Filters for student list in Navigation, managed by Navigation component
@@ -534,7 +536,17 @@ const App = () => {
                 onFilterChange={setStudentFilters}
                 onShowStats={async () => { // Async-Call, um alle Einträge vor dem Öffnen zu laden
                     if (db) {
+                        // KORREKTUR: Alle Einträge aus der Datenbank holen
+                        const allDbEntries = await getAllEntries(db);
+                        // Optional: Einträge mit Studentennamen anreichern, um dies nicht im Statistik-Modal machen zu müssen
+                        const enrichedAllDbEntries = allDbEntries.map(e => ({
+                            ...e,
+                            studentName: students.find(s => s.id === e.studentId)?.name || `Schüler ${e.studentId}`
+                        }));
+                        setGlobalEntriesForStats(enrichedAllDbEntries); // Globale Einträge speichern
                         setModal('statistics');
+                    } else {
+                        alert("Datenbank ist nicht bereit.");
                     }
                 }}
                 onShowSettings={() => setModal('settings')}
@@ -602,19 +614,14 @@ const App = () => {
                 />
             )}
 
-            {modal === 'statistics' && db && ( // Modal nur rendern, wenn DB geladen ist
+            {modal === 'statistics' && db && ( // Modal nur rendern, wenn DB geladen ist und Daten bereit sind
                 <StatisticsModal
-                    onClose={() => setModal(null)}
+                    onClose={() => {
+                        setModal(null);
+                        setGlobalEntriesForStats([]); // KORREKTUR: Globale Einträge beim Schließen des Modals löschen
+                    }}
                     allStudents={students} // Global: Alle Schüler
-                    allEntries={entries}   // Global: Alle Einträge, da "entries" bereits aggregiert wird in App.jsx (initial load)
-                                           // ACHTUNG: 'entries' hier ist der im MainContent angezeigte, nicht zwingend ALLE.
-                                           // Für GLOBALE Statistik brauchen wir wirklich ALLE.
-                                           // Eine saubere Lösung wäre, hier `await getAllEntries(db)` zu machen.
-                    // KORREKTUR: Für die globale Statistik müssen wir alle Einträge aus der DB holen
-                    // Dies sollte in einem useEffect oder im onShowStats-Handler erfolgen,
-                    // um nicht bei jedem Render die DB zu queryen.
-                    students={students} // Pass all students to stats modal
-                    entries={allEntries} // Pass all entries to stats modal (state needs to be populated first)
+                    allEntries={globalEntriesForStats} // KORRIGIERT: Übergibt die global gefetchten Einträge
                 />
             )}
             {modal === 'help' && <HelpModal onClose={() => setModal(null)} />}
