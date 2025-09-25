@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="hell">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pädagogische Dokumentation</title>
+
+    <!-- CSS-Imports -->
+    <link rel="stylesheet" href="./styles/theme-variables.css" />
+    <link rel="stylesheet" href="./styles/layout-base.css" />
+    <link rel="stylesheet" href="./styles/components-3d.css" />
+
+    <style>
+      body, #root {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: auto;
+        font-family: system-ui, sans-serif;
+      }
+
+      .loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        font-size: 18px;
+        color: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div class="loading">Anwendung wird geladen...</div>
+    </div>
+
+    <!-- Vite entrypoint -->
+    <script type="module" src="./src/main.jsx"></script>
+  </body>
+</html>
