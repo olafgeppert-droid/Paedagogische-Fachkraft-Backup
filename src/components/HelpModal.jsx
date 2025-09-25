@@ -42,10 +42,10 @@ const HelpModal = ({ onClose }) => {
                     </ul>
 
                     <h3>📝 2. Einträge verwalten</h3>
-                    <p>Jeder Schüler kann mehrere Einträge haben. Einträge können Beobachtungen, Aktivitäten, Bewertungen oder Notizen sein.</p>
+                    <p>Jeder Schüler kann mehrere Einträge haben. Einträge können Beobachtungen, Maßnahmen, Bewertungen oder Notizen sein.</p>
 
                     <ul>
-                        <li><strong>Neuer Eintrag:</strong> Toolbar → „📝 Eintrag hinzufügen“. Wählen Sie Schüler, Datum, Thema, Aktivität, Bewertung und Notizen aus.</li>
+                        <li><strong>Neuer Eintrag:</strong> Toolbar → „📝 Eintrag hinzufügen“. Wählen Sie Schüler, Datum, Fach / Thema, Maßnahmen, Erfolgsbewertung und Notizen aus.</li> {/* Korrektur */}
                         <li><strong>Eintrag bearbeiten:</strong> Klicken Sie auf einen Eintrag → „🔧 Eintrag bearbeiten“.</li>
                         <li><strong>Eintrag löschen:</strong> Nur im Bearbeitungsdialog über „❌ Löschen“ möglich.</li>
                         <li><strong>Datum filtern:</strong> Wählen Sie oben in der Navigation ein Datum, um nur Einträge dieses Tages anzuzeigen.</li>
@@ -54,8 +54,8 @@ const HelpModal = ({ onClose }) => {
                     <p><strong>Besonderheiten beim Filtern von Einträgen:</strong></p>
                     <ul>
                         <li>Filtern nach Schüler + Datum → zeigt nur Einträge des gewählten Schülers am gewählten Tag.</li>
-                        <li>Filtern nach Schüler + Thema → zeigt nur Einträge dieses Schülers mit dem gewählten Thema.</li>
-                        <li>Alle Filter kombinierbar: Schüler, Datum, Schuljahr, Schule, Klasse, Thema/Projekt.</li>
+                        <li>Filtern nach Schüler + Fach / Thema → zeigt nur Einträge dieses Schülers mit dem gewählten Fach / Thema.</li> {/* Korrektur */}
+                        <li>Alle Filter kombinierbar: Schüler, Datum, Schuljahr, Schule, Klasse, Fach / Thema.</li> {/* Korrektur */}
                         <li>Suchfeld in Toolbar öffnet zusätzlich eine Volltextsuche über alle Einträge und Schüler.</li>
                         <br />
                         <br />
@@ -68,22 +68,22 @@ const HelpModal = ({ onClose }) => {
                         <li><strong>Suchdialog öffnen:</strong> Toolbar → „🔍 Protokoll suchen“.</li>
                         <li><strong>Suchbegriffe:</strong>
                             <ul>
-                                <li>Thema/Projekt</li>
-                                <li>Aktivität</li>
-                                <li>Bewertung</li>
+                                <li>Fach / Thema</li> {/* Korrektur */}
+                                <li>Maßnahmen</li> {/* Korrektur */}
+                                <li>Erfolgsbewertung</li> {/* Korrektur */}
                                 <li>Notizen</li>
                                 <li>Schülername</li>
                             </ul>
                         </li>
                         <li><strong>Exakte Suche:</strong> Mit Anführungszeichen: <code>"Mathematik"</code> → nur exakte Treffer.</li>
-                        <li><strong>Alle Felder durchsuchen:</strong> Auswahl „Alle Felder“ durchsucht Thema, Aktivität, Notizen, Bewertung und Schülername.</li>
+                        <li><strong>Alle Felder durchsuchen:</strong> Auswahl „Alle Felder“ durchsucht Fach / Thema, Maßnahmen, Erfolgsbewertung, Notizen und Schülername.</li> {/* Korrektur */}
                     </ul>
 
                     <p><strong>Beispiele für Such- und Filter-Kombinationen:</strong></p>
                     <ul>
                         <li>Suchbegriff „Anna“ + Filter Name → zeigt nur Einträge von Anna.</li>
-                        <li>Suchbegriff „Experiment“ + Filter Aktivität → zeigt alle Experiment-Einträge.</li>
-                        <li>Exakte Suche „Mathematik“ → nur Einträge mit exakt diesem Thema.</li>
+                        <li>Suchbegriff „Experiment“ + Filter Maßnahmen → zeigt alle Einträge, die 'Experiment' in den Maßnahmen enthalten.</li> {/* Korrektur */}
+                        <li>Exakte Suche „Mathematik“ → nur Einträge mit exakt diesem Fach / Thema.</li> {/* Korrektur */}
                         <li>Kombination Suchbegriff + Datum → zeigt Treffer nur an dem gewählten Tag.</li>
                         <li>Filter Schüler + Suchbegriff + Klasse → sehr gezielte Eingrenzung möglich.</li>
                         <br />
@@ -105,18 +105,18 @@ const HelpModal = ({ onClose }) => {
                     <ul>
                         <li>Farbschema: hell 🌞, dunkel 🌙 oder kontrastreich 🎨</li>
                         <li>Schriftgröße anpassen: für Standardtext und Eingabefelder</li>
-                        <li>Stammdaten verwalten: Schuljahre, Schulen, Klassen, Aktivitäten, Notizvorlagen</li>
+                        <li>Stammdaten verwalten: Schuljahre, Schulen und Klassen, Notizvorlagen</li> {/* Korrektur */}
                         <li>Alle Einstellungen werden automatisch gespeichert</li>
                         <br />
                         <br />
                     </ul>
 
                     <h3>📊 6. Statistiken</h3>
-                    <p>Statistiken geben Ihnen eine Übersicht zu Schülern, Klassen, Aktivitäten und Bewertungen.</p>
+                    <p>Statistiken geben Ihnen eine Übersicht zu Schülern, Klassen, und Bewertungen.</p> {/* Korrektur, 'Aktivitäten' entfernt */}
                     <ul>
                         <li>Button 📊 „Statistiken“ in Toolbar oder Navigation</li>
                         <li>Filter aus Navigation wirken direkt auf die Diagramme</li>
-                        <li>Diagramme visualisieren Einträge nach Thema, Bewertung, Aktivität oder Schüler</li>
+                        <li>Diagramme visualisieren Einträge nach Fach / Thema, Erfolgsbewertung, oder Schüler</li> {/* Korrektur, 'Aktivität' entfernt */}
                         <li>Interaktiv: Klicken auf eine Kategorie, um Detailinformationen zu sehen</li>
                         <br />
                         <br />
