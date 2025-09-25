@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { setupDB, loadSampleData, clearAllData } from '../database';
+// Removed setupDB, loadSampleData, clearAllData imports
  
 const SettingsModal = ({
     settings,
     masterData,
     onClose,
-    onSave, // Callback to App.jsx for saving settings (which updates App state and DB)
-    onSaveMasterData, // Callback to App.jsx for saving masterData (which updates App state and DB)
-    setStudents, // Passed to App.jsx's loadSampleData/clearAllData for state update
-    setEntries, // Passed to App.jsx's loadSampleData/clearAllData for state update
-    setSelectedStudent, // Passed to App.jsx's loadSampleData/clearAllData for state update
-    setSettings, // Passed to App.jsx's clearAllData for state update
-    onCaptureState // Callback from App.jsx to save history state
+    onSave,
+    onSaveMasterData,
+    onLoadSampleData, // New prop: App.jsx's handler
+    onClearAllData    // New prop: App.jsx's handler
+    // Removed setStudents, setEntries, setSelectedStudent, setSettings, onCaptureState
 }) => {
     // =======================
     // Form-State
@@ -23,24 +21,23 @@ const SettingsModal = ({
         customColors: {}
     });
  
-    // Korrektur: masterFormData sollte keine 'subjects' und 'activities' mehr enthalten
     const [masterFormData, setMasterFormData] = useState({
         schoolYears: masterData?.schoolYears || [],
         schools: masterData?.schools || {},
+        subjects: masterData?.subjects || [],
+        activities: masterData?.activities || [],
         notesTemplates: masterData?.notesTemplates || []
     });
  
     const [showMasterDataModal, setShowMasterDataModal] = useState(false);
  
-    // Initialise customColors from settings, or use defaults for 'farbig' theme preview
     const [customColors, setCustomColors] = useState(settings?.customColors && Object.keys(settings.customColors).length > 0 ? settings.customColors : {
-        navigation: '#fed7aa', // Match default 'farbig' theme for consistency
+        navigation: '#fed7aa',
         toolbar: '#f8fafc',
         header: '#dc2626',
         windowBackground: '#fef7ed'
     });
  
-    // Sync formData/customColors with external settings prop changes (e.g., after loading sample data or importing)
     useEffect(() => {
         setFormData(settings);
         if (settings?.customColors) {
@@ -48,13 +45,8 @@ const SettingsModal = ({
         }
     }, [settings]);
  
-    // Sync masterFormData with external masterData prop changes
     useEffect(() => {
-        setMasterFormData({
-            schoolYears: masterData?.schoolYears || [],
-            schools: masterData?.schools || {},
-            notesTemplates: masterData?.notesTemplates || []
-        });
+        setMasterFormData(masterData);
     }, [masterData]);
  
  
@@ -63,17 +55,14 @@ const SettingsModal = ({
     // =======================
     const handleSubmit = async (e) => {
         e.preventDefault();
-        // Call the parent's onSave callback, which also handles DB persistence and history capture
         await onSave({ ...formData, customColors });
-        onClose(); // Close modal after successful save
+        onClose();
     };
  
     const handleMasterDataSubmit = async (e) => {
         e.preventDefault();
-        // Call the parent's onSaveMasterData callback, which also handles DB persistence and history capture
-        // Korrektur: onSaveMasterData wird die Daten schon filtern, hier nur die Übergabe.
         await onSaveMasterData(masterFormData);
-        setShowMasterDataModal(false); // Close master data modal
+        setShowMasterDataModal(false);
     };
  
     const resetToDefault = async () => {
@@ -88,13 +77,10 @@ const SettingsModal = ({
                 windowBackground: '#fef7ed'
             }
         };
-        // Update local state first
         setFormData(defaultSettings);
         setCustomColors(defaultSettings.customColors);
  
-        // Call parent's onSave to update App.jsx state, apply settings, and capture history
         await onSave(defaultSettings);
-        // onClose() is not called here, as onSave will trigger applySettings and the modal should remain open until user explicitly closes or saves
     };
  
     // =======================
@@ -179,92 +165,20 @@ const SettingsModal = ({
             }
         }));
     };
-    
-    // Korrektur: Fächer / Themen und Aktivitäten Listen entfernt, da sie nicht mehr über Stammdaten verwaltet werden.
-    const addNotesTemplate = () => {
-        const newItem = prompt('Neue Notizvorlage hinzufügen:');
-        if (newItem && newItem.trim() && !masterFormData.notesTemplates.includes(newItem)) {
-            setMasterFormData(prev => ({
-                ...prev,
-                notesTemplates: [...prev.notesTemplates, newItem].sort()
-            }));
-        } else if (newItem) {
-            alert('Eingabe ungültig oder Vorlage existiert bereits.');
-        }
-    };
- 
-    const removeNotesTemplate = (index) => {
-        setMasterFormData(prev => ({
-            ...prev,
-            notesTemplates: prev.notesTemplates.filter((_, i) => i !== index)
-        }));
-    };
  
     // =======================
-    // Beispieldaten & Alle Daten löschen
+    // Beispieldaten & Alle Daten löschen (Now calls App.jsx handlers)
     // =======================
-    const handleLoadSampleData = async () => {
-        if (!window.confirm('Beispieldaten laden? Alle vorhandenen Daten werden überschrieben!')) return;
- 
-        try {
-            const dbInstance = await setupDB();
-            const loadedData = await loadSampleData(dbInstance); // loadSampleData now returns the data
-           
-            // Update App.jsx states directly
-            setStudents(loadedData.students);
-            setEntries(loadedData.entries);
-            // Korrektur: masterData an neue Struktur anpassen
-            setMasterData({
-                schoolYears: loadedData.masterData.schoolYears || [],
-                schools: loadedData.masterData.schools || {},
-                notesTemplates: loadedData.masterData.notesTemplates || []
-            });
- 
-            setSettings(prevSettings => ({
-                ...prevSettings,
-                theme: 'hell', // Often reset theme to default after loading sample data
-                fontSize: 16,
-                inputFontSize: 16,
-                customColors: {}
-            }));
- 
-            setSelectedStudent(loadedData.students.length > 0 ? loadedData.students[0] : null);
-           
-            await onCaptureState(); // Capture state in App.jsx after all updates
-            alert('Beispieldaten erfolgreich geladen! Bitte Browser-Seite ggf. neu laden, um alle Änderungen anzuwenden.');
-            onClose();
-        } catch (error) {
-            console.error('Fehler beim Laden der Beispieldaten:', error);
-            alert('Fehler beim Laden der Beispieldaten: ' + (error.message || error));
-        }
+    const handleLoadSampleDataClick = async () => {
+        // App.jsx will handle confirmation, DB call, state updates, and history capture
+        onLoadSampleData();
+        onClose(); // Close modal after action is triggered
     };
  
-    const handleClearAllData = async () => {
-        if (!window.confirm('Alle Daten löschen? Diese Aktion ist endgültig und kann nicht rückgängig gemacht werden!')) return;
- 
-        try {
-            const dbInstance = await setupDB();
-            const clearedData = await clearAllData(dbInstance); // clearAllData now returns empty data
- 
-            // Update App.jsx states directly
-            setStudents(clearedData.students);
-            setEntries(clearedData.entries);
-            setSettings(clearedData.settings);
-            // Korrektur: masterData an neue Struktur anpassen
-            setMasterData({
-                schoolYears: clearedData.masterData.schoolYears || [],
-                schools: clearedData.masterData.schools || {},
-                notesTemplates: clearedData.masterData.notesTemplates || []
-            });
-            setSelectedStudent(null); // No student selected after clearing all
-           
-            await onCaptureState(); // Capture state in App.jsx after all updates
-            alert('Alle Daten erfolgreich gelöscht! Bitte Browser-Seite ggf. neu laden, um alle Änderungen anzuwenden.');
-            onClose();
-        } catch (error) {
-            console.error('Fehler beim Löschen aller Daten:', error);
-            alert('Fehler beim Löschen aller Daten: ' + (error.message || error));
-        }
+    const handleClearAllDataClick = async () => {
+        // App.jsx will handle confirmation, DB call, state updates, and history capture
+        onClearAllData();
+        onClose(); // Close modal after action is triggered
     };
  
     // =======================
@@ -374,7 +288,7 @@ const SettingsModal = ({
                             <div className="settings-section">
                                 <h3>📊 Stammdaten</h3>
                                 <div className="master-data-card">
-                                    <p>Verwalten Sie Schuljahre, Schulen und Klassen, Notizvorlagen.</p> {/* Korrektur */}
+                                    <p>Verwalten Sie Schuljahre, Schulen und Klassen, Fächer und Vorlagen.</p>
                                     <button
                                         type="button"
                                         className="button button-primary"
@@ -383,15 +297,7 @@ const SettingsModal = ({
                                         📋 Stammdaten verwalten
                                     </button>
                                 </div>
- 
-                                <div className="settings-action-buttons" style={{ marginTop: '16px', display: 'flex', gap: '12px' }}>
-                                    <button type="button" className="button button-warning" onClick={handleLoadSampleData}>
-                                        📂 Beispieldaten laden
-                                    </button>
-                                    <button type="button" className="button button-danger" onClick={handleClearAllData}>
-                                        🗑️ Alle Daten löschen
-                                    </button>
-                                </div>
+                                {/* Removed Beispieldaten laden & Alle Daten löschen buttons from here */}
                             </div>
  
                             {/* Modal Actions */}
@@ -507,18 +413,17 @@ const SettingsModal = ({
                                 </div>
  
                                 <div className="divider"></div>
-                                {/* Korrektur: Fächer / Themen Sektion entfernt */}
-                                {/* Korrektur: Aktivitäten Sektion entfernt */}
+ 
                                 <div className="data-section">
-                                    <h3>🗒️ Notizvorlagen</h3>
+                                    <h3>📚 Fächer / Themen</h3>
                                     <div className="data-list">
-                                        {masterFormData.notesTemplates.map((item, index) => (
+                                        {masterFormData.subjects.map((item, index) => (
                                             <div key={index} className="data-item">
                                                 <span className="item-text">{item}</span>
                                                 <button
                                                     type="button"
                                                     className="button button-danger button-icon"
-                                                    onClick={() => removeNotesTemplate(index)} // Geänderte Referenz
+                                                    onClick={() => setMasterFormData(prev => ({ ...prev, subjects: prev.subjects.filter((_, i) => i !== index) }))}
                                                 >
                                                     ❌
                                                 </button>
@@ -528,9 +433,103 @@ const SettingsModal = ({
                                     <button
                                         type="button"
                                         className="button button-outline"
-                                        onClick={addNotesTemplate} // Geänderte Referenz
+                                        onClick={() => {
+                                            const newItem = prompt('Neues Fach/Thema hinzufügen:');
+                                            if (newItem && newItem.trim() && !masterFormData.subjects.includes(newItem)) {
+                                                setMasterFormData(prev => ({
+                                                    ...prev,
+                                                    subjects: [...prev.subjects, newItem].sort()
+                                                }));
+                                            } else if (newItem) {
+                                                alert('Eingabe ungültig oder Fach/Thema existiert bereits.');
+                                            }
+                                        }}
+                                    >
+                                        ➕ Fach/Thema hinzufügen
+                                    </button>
+                                </div>
+ 
+                                <div className="divider"></div>
+ 
+                                <div className="data-section">
+                                    <h3>🎯 Aktivitäten</h3>
+                                    <div className="data-list">
+                                        {masterFormData.activities.map((item, index) => (
+                                            <div key={index} className="data-item">
+                                                <span className="item-text">{item}</span>
+                                                <button
+                                                    type="button"
+                                                    className="button button-danger button-icon"
+                                                    onClick={() => setMasterFormData(prev => ({ ...prev, activities: prev.activities.filter((_, i) => i !== index) }))}
+                                                >
+                                                    ❌
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="button button-outline"
+                                        onClick={() => {
+                                            const newItem = prompt('Neue Aktivität hinzufügen:');
+                                            if (newItem && newItem.trim() && !masterFormData.activities.includes(newItem)) {
+                                                setMasterFormData(prev => ({
+                                                    ...prev,
+                                                    activities: [...prev.activities, newItem].sort()
+                                                }));
+                                            } else if (newItem) {
+                                                alert('Eingabe ungültig oder Aktivität existiert bereits.');
+                                            }
+                                        }}
+                                    >
+                                        ➕ Aktivität hinzufügen
+                                    </button>
+                                </div>
+ 
+                                <div className="divider"></div>
+ 
+                                <div className="data-section">
+                                    <h3>🗒️ Notizvorlagen</h3>
+                                    <div className="data-list">
+                                        {masterFormData.notesTemplates.map((item, index) => (
+                                            <div key={index} className="data-item">
+                                                <span className="item-text">{item}</span>
+                                                <button
+                                                    type="button"
+                                                    className="button button-danger button-icon"
+                                                    onClick={() => setMasterFormData(prev => ({ ...prev, notesTemplates: prev.notesTemplates.filter((_, i) => i !== index) }))}
+                                                >
+                                                    ❌
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="button button-outline"
+                                        onClick={() => {
+                                            const newItem = prompt('Neue Notizvorlage hinzufügen:');
+                                            if (newItem && newItem.trim() && !masterFormData.notesTemplates.includes(newItem)) {
+                                                setMasterFormData(prev => ({
+                                                    ...prev,
+                                                    notesTemplates: [...prev.notesTemplates, newItem].sort()
+                                                }));
+                                            } else if (newItem) {
+                                                alert('Eingabe ungültig oder Vorlage existiert bereits.');
+                                            }
+                                        }}
                                     >
                                         ➕ Vorlage hinzufügen
+                                    </button>
+                                </div>
+ 
+                                <div className="divider"></div> {/* Added divider for separation */}
+                                <div className="settings-action-buttons" style={{ marginTop: '16px', display: 'flex', gap: '12px' }}>
+                                    <button type="button" className="button button-warning" onClick={handleLoadSampleDataClick}>
+                                        📂 Beispieldaten laden
+                                    </button>
+                                    <button type="button" className="button button-danger" onClick={handleClearAllDataClick}>
+                                        🗑️ Alle Daten löschen
                                     </button>
                                 </div>
  
