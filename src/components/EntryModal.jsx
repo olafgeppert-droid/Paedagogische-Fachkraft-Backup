@@ -95,20 +95,17 @@ const EntryModal = ({ onClose, onSave, masterData, student, date, existingEntry 
                             />
                         </div>
  
-                        {/* Fach / Thema (using masterData.subjects) */}
+                        {/* Fach / Thema (als Freitextfeld, ohne Vorbelegung aus Stammdaten) */}
                         <div className="form-group">
                             <label className="form-label">Fach / Thema</label>
-                            <select
-                                className="form-select"
+                            <input // Geändert von select zu input type="text"
+                                type="text"
+                                className="form-input"
                                 value={formData.subject}
                                 onChange={(e) => handleChange('subject', e.target.value)}
                                 required
-                            >
-                                <option value="">Bitte wählen</option>
-                                {masterData.subjects && masterData.subjects.map((subject) => (
-                                    <option key={subject} value={subject}>{subject}</option>
-                                ))}
-                            </select>
+                                placeholder="Fach oder Thema eingeben..."
+                            />
                         </div>
  
                         {/* Beobachtungen */}
