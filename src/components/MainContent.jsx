@@ -110,7 +110,7 @@ const EntryCard = ({ entry, student, onEdit }) => {
             </div>
             <p><strong>Schüler:</strong> {studentName}</p>
             <p><strong>Beobachtungen:</strong> {entry.observations || entry.notes}</p>
-            <p><strong>Maßnahmen:</strong> {entry.measures || entry.activity}</p>
+            <p><strong>Maßnahmen:</strong> {entry.measures}</p> {/* Korrektur: `|| entry.activity` entfernt */}
             {entry.erfolg && <p><strong>Erfolg:</strong> {entry.erfolg}</p>}
             {entry.erfolgRating && entry.erfolgRating !== 'none' && (
                 <p><strong>Bewertung:</strong> {entry.erfolgRating || entry.bewertung}</p>
