@@ -40,7 +40,7 @@ const HelpModal = ({ onClose }) => {
                         <li><strong>Name suchen:</strong> Tippen Sie `Anna` in das Suchfeld → Es werden alle Schüler angezeigt, deren Name "Anna" enthält.</li>
                         <li><strong>Schuljahr filtern:</strong> Wählen Sie `2024/2025` aus dem "Schuljahr"-Dropdown → Nur Schüler aus diesem Jahrgang werden gelistet.</li>
                         <li><strong>Schule & Klasse filtern:</strong> Wählen Sie `Grundschule A` aus "Schule" und dann `3b` aus "Klasse" → Nur Schüler aus der Klasse 3b der Grundschule A werden angezeigt.</li>
-                        <li><strong>Kombinierte Suche:</strong> Geben Sie `Max` ins Suchfeld ein und wählen Sie `2025/2026` als Schuljahr → Es werden alle Schüler namens Max im Schuljahr 2025/2026 angezeigt.</li>
+                        <li><strong>Kombinierte Suche:</strong> Geben Sie `Mario` ins Suchfeld ein und wählen Sie `2025/2026` als Schuljahr → Es werden alle Schüler namens Mario im Schuljahr 2025/2026 angezeigt.</li>
                     </ul>
                     <br />
 
