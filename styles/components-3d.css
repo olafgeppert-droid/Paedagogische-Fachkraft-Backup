@@ -385,22 +385,38 @@
     border: 2px solid var(--border-color, #d1d5db);
 }
 
-/* === INDIVIDUAL THEME PREVIEW COLORS === */
-/* HELL */
-.hell-theme-preview .preview-header { background-color: #fef3c7; }
-.hell-theme-preview .preview-toolbar { background-color: #fde68a; }
-.hell-theme-preview .preview-content { background-color: #ffffff; }
+/* ===== NEU: Unterschiedliche Farben für jede Theme-Preview ===== */
+.theme-card.hell .preview-header {
+    background: #2563eb;
+}
+.theme-card.hell .preview-toolbar {
+    background: #059669;
+}
+.theme-card.hell .preview-content {
+    background: #f8fafc;
+}
 
-/* DUNKEL */
-.dunkel-theme-preview .preview-header { background-color: #1f2937; }
-.dunkel-theme-preview .preview-toolbar { background-color: #374151; }
-.dunkel-theme-preview .preview-content { background-color: #111827; }
+.theme-card.dunkel .preview-header {
+    background: #111827;
+}
+.theme-card.dunkel .preview-toolbar {
+    background: #374151;
+}
+.theme-card.dunkel .preview-content {
+    background: #1f2937;
+}
 
-/* FARBIG */
-.farbig-theme-preview .preview-header { background-color: #2563eb; }
-.farbig-theme-preview .preview-toolbar { background-color: #059669; }
-.farbig-theme-preview .preview-content { background-color: #fef7ed; }
+.theme-card.farbig .preview-header {
+    background: #dc2626;
+}
+.theme-card.farbig .preview-toolbar {
+    background: #f59e0b;
+}
+.theme-card.farbig .preview-content {
+    background: #fde68a;
+}
 
+/* THEME INFO */
 .theme-info {
     display: flex;
     align-items: center;
