@@ -1,2 +1,2 @@
 // src/version.js
-export const appVersion = "1.9.5";
+export const appVersion = "2.0.0";
