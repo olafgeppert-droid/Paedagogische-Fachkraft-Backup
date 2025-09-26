@@ -111,7 +111,7 @@ const StatisticsModal = ({ allStudents, allEntries, onClose }) => { // Akzeptier
                     <hr/>
 
                     <h3>Schülerstatus</h3>
-                    <p><strong>Schüler mit Protokolle:</strong> {stats.studentsWithEntries}</p>
+                    <p><strong>Schüler mit Protokollen:</strong> {stats.studentsWithEntries}</p>
                     <p><strong>Schüler ohne Protokolle:</strong> {stats.studentsWithoutEntries}</p>
                     <hr/>
 
