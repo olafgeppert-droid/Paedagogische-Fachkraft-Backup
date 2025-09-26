@@ -5,7 +5,7 @@ function calculateStatistics(allStudents, allEntries) {
     const totalStudents = allStudents.length;
     const totalEntries = allEntries.length;
     
-    // Einträge pro Schüler ID zählen
+    // Protokolle pro Schüler ID zählen
     const entryCountPerStudentId = allEntries.reduce((acc, entry) => {
         acc[entry.studentId] = (acc[entry.studentId] || 0) + 1;
         return acc;
