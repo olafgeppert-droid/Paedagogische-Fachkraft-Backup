@@ -46,7 +46,7 @@ const Navigation = ({
         setLocalSchoolYear('');
         setLocalSchool('');
         setLocalClassName('');
-        onDateSelect(new Date().toISOString().split('T')[0]); // Reset date to today
+        onDateSelect(''); // Reset date to today
         onStudentSelect(null); // Deselect any student
     };
  
